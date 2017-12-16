@@ -1,5 +1,5 @@
 import React from "react";
-import EditorCanvas from "./EditorCanvas";
+import EditorView from "./EditorView";
 import EditorStore from "./EditorStore";
 
 export default class Editor extends React.Component {
@@ -38,7 +38,7 @@ export default class Editor extends React.Component {
             cursor: text;
           }
         `}</style>
-        <EditorCanvas store={this.store} />
+        <EditorView store={this.store} />
         <textarea
           ref={input => (this.input = input)}
           onChange={this.store.handleInput}
