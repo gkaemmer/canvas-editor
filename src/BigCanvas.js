@@ -2,7 +2,8 @@ import React from "react";
 
 let ratio = 1;
 
-export default class MaximizeCanvas extends React.Component {
+// Canvas component that auto-maximizes and adjusts aspect ratio
+export default class BigCanvas extends React.Component {
   componentDidMount() {
     const backingStoreRatio =
       this.ctx.webkitBackingStorePixelRatio ||

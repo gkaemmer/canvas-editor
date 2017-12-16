@@ -1,13 +1,14 @@
-import React from "react";
-import MaximizeCanvas from "./MaximizeCanvas";
 import EditorStore from "./EditorStore";
 
 const PADDING = 10;
 
-export default class EditorView extends React.Component {
-  componentDidMount() {
-    this.ctx.fillStyle = "#23211d";
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+// Handles rendering of the canvas, and responding to display-specific mouse
+// events
+export default class Renderer {
+  setup(canvas, ctx, store) {
+    this.canvas = canvas;
+    this.ctx = ctx;
+    this.store = store;
     this.store.setup(() => this.draw());
     this.draw();
   }
@@ -74,7 +75,7 @@ export default class EditorView extends React.Component {
       this.ctx.fillText(row, this.toX(0), rowy);
     }
 
-    if (this.props.focused) {
+    if (this.store.focused) {
       // Draw cursor
       this.ctx.fillRect(
         PADDING * 2 + this.gutterWidth + this.store.letterWidth * this.store.cx - 1,
@@ -104,29 +105,5 @@ export default class EditorView extends React.Component {
     let x = Math.round((e.clientX - PADDING*2 - this.gutterWidth) / this.store.letterWidth);
     let y = Math.floor((e.clientY - PADDING) / this.store.letterHeight);
     this.store.handleSelectMove({ x, y });
-  }
-
-  componentDidUpdate() {
-    this.draw();
-  }
-
-  get store() {
-    return this.props.store;
-  }
-
-  render() {
-    return (
-      <MaximizeCanvas
-        style={{ cursor: "text" }}
-        innerRef={(canvas, ctx) => {
-          this.canvas = canvas;
-          this.ctx = ctx;
-        }}
-        onMouseDown={this.handleMouseDown}
-        onMouseMove={this.handleMouseMove}
-        onMouseUp={this.handleMouseUp}
-        onResize={() => this.draw()}
-      />
-    );
   }
 }

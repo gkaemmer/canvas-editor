@@ -1,20 +1,29 @@
 import React from "react";
-import EditorView from "./EditorView";
+import BigCanvas from "./BigCanvas";
 import EditorStore from "./EditorStore";
+import EditorRenderer from "./EditorRenderer";
 
 export default class Editor extends React.Component {
   store = new EditorStore();
-  state = {
-    focused: true
-  }
+  renderer = new EditorRenderer();
 
   componentDidMount() {
-    this.forceUpdate();
+    this.renderer.setup(this.canvas, this.ctx, this.store);
   }
 
   refocus() {
     this.input.focus();
   }
+
+  handleFocus = () => {
+    this.store.focused = true;
+    this.renderer.draw();
+  };
+
+  handleBlur = () => {
+    this.store.focused = false;
+    this.renderer.draw();
+  };
 
   render() {
     return (
@@ -45,12 +54,22 @@ export default class Editor extends React.Component {
             cursor: text;
           }
         `}</style>
-        <EditorView focused={this.state.focused} store={this.store} />
+        <BigCanvas
+          style={{ cursor: "text" }}
+          innerRef={(canvas, ctx) => {
+            this.canvas = canvas;
+            this.ctx = ctx;
+          }}
+          onMouseDown={this.renderer.handleMouseDown}
+          onMouseMove={this.renderer.handleMouseMove}
+          onMouseUp={this.renderer.handleMouseUp}
+          onResize={this.renderer.draw}
+        />
         <textarea
           ref={input => (this.input = input)}
           onChange={this.store.handleInput}
-          onFocus={() => this.setState({ focused: true })}
-          onBlur={() => this.setState({ focused: false })}
+          onFocus={this.handleFocus}
+          onBlur={this.handleBlur}
           autoFocus
         />
       </div>

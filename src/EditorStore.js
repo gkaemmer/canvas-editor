@@ -20,6 +20,7 @@ export default class EditorStore {
   prevcx = 0;
   letterWidth = 8;
   selection = null;
+  focused = true;
 
   replaceRow(rowIndex, rows) {
     Array.prototype.splice.apply(this.rows, [rowIndex, 1, ...rows]);
