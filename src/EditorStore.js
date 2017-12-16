@@ -93,39 +93,87 @@ export default class EditorStore {
     this.onChange();
   }
 
+  moveCursor = e => {
+    const shouldSelect = e.shiftKey;
+    const toEnd = e.metaKey;
+    if (shouldSelect && !this.selection) {
+      this.selection = { startX: this.cx, startY: this.cy };
+    }
+    if (e.code === "ArrowLeft") {
+      if (toEnd) {
+        this.cx = 0;
+      } else {
+        if (this.cx === 0) {
+          if (this.cy > 0) {
+            this.cy--;
+            this.cx = this.rows[this.cy].length;
+          }
+        } else {
+          this.cx--;
+        }
+      }
+      this.prevcx = this.cx;
+    } else if (e.code === "ArrowRight") {
+      if (toEnd) {
+        this.cx = this.rows[this.cy].length;
+      } else {
+        if (this.cx >= this.rows[this.cy].length) {
+          if (this.cy < this.rows.length - 1) {
+            this.cy++;
+            this.cx = 0;
+          }
+        } else {
+          this.cx++;
+        }
+      }
+      this.prevcx = this.cx;
+    } else if (e.code === "ArrowUp") {
+      if (toEnd) {
+        this.cy = 0;
+        this.cx = 0;
+      } else {
+        if (this.cy <= 0)
+          this.cx = this.prevcx = 0;
+        else {
+          this.cy--;
+          this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
+        }
+      }
+    } else if (e.code === "ArrowDown") {
+      if (toEnd) {
+        this.cy = this.rows.length - 1;
+        this.cx = this.rows[this.cy].length;
+      } else {
+        if (this.cy >= this.rows.length - 1)
+          this.cx = this.prevcx = this.rows[this.cy].length;
+        else {
+          this.cy++;
+          this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
+        }
+      }
+    }
+    if (shouldSelect) {
+      this.selection = {
+        ...this.selection,
+        endX: this.cx,
+        endY: this.cy
+      };
+    } else {
+      this.selection = null;
+    }
+    this.onChange();
+  };
+
   handleKeyPress = e => {
     if (e.code === "Backspace") {
       this.backspace();
-    } else if (e.code === "ArrowLeft") {
-      if (this.cx === 0) {
-        if (this.cy > 0) {
-          this.cy--;
-          this.cx = this.rows[this.cy].length;
-        }
-      } else {
-        this.cx--;
-      }
-      this.prevcx = this.cx;
-      this.onChange();
-    } else if (e.code === "ArrowRight") {
-      if (this.cx >= this.rows[this.cy].length) {
-        if (this.cy < this.rows.length - 1) {
-          this.cy++;
-          this.cx = 0;
-        }
-      } else {
-        this.cx++;
-      }
-      this.prevcx = this.cx;
-      this.onChange();
-    } else if (e.code === "ArrowUp") {
-      this.cy = Math.max(0, this.cy - 1);
-      this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
-      this.onChange();
-    } else if (e.code === "ArrowDown") {
-      this.cy = Math.min(this.rows.length - 1, this.cy + 1);
-      this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
-      this.onChange();
+    } else if (
+      e.code === "ArrowRight" ||
+      e.code === "ArrowLeft" ||
+      e.code === "ArrowUp" ||
+      e.code === "ArrowDown"
+    ) {
+      this.moveCursor(e);
     }
   };
 
@@ -144,7 +192,7 @@ export default class EditorStore {
       startY: y,
       endX: x,
       endY: y
-    }
+    };
   };
 
   handleSelectMove = ({ x, y }) => {
@@ -154,9 +202,9 @@ export default class EditorStore {
       ...this.selection,
       endX: x,
       endY: y
-    }
+    };
     this.onChange();
-  }
+  };
 
   handleSelectEnd = ({ x, y }) => {
     y = Math.min(this.rows.length - 1, Math.max(0, y));

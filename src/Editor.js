@@ -16,13 +16,17 @@ export default class Editor extends React.Component {
   }
 
   handleFocus = () => {
-    this.store.focused = true;
-    this.renderer.draw();
+    if (!this.store.focused) {
+      this.store.focused = true;
+      this.renderer.draw();
+    }
   };
 
   handleBlur = () => {
-    this.store.focused = false;
-    this.renderer.draw();
+    if (this.store.focused) {
+      this.store.focused = false;
+      this.renderer.draw();
+    }
   };
 
   render() {
