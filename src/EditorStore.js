@@ -26,6 +26,7 @@ export default class EditorStore {
   }
 
   type(text) {
+    if (this.selection) this.deleteSelection();
     // This is kinda ugly--basically it inserts an array into this.rows if
     //   necessary, otherwise just edits this.rows[this.cy]
     const oldContent = this.rows[this.cy];
@@ -45,6 +46,20 @@ export default class EditorStore {
     this.onChange();
   }
 
+  deleteSelection() {
+    let { startX, startY, endX, endY } = this.selection;
+    if (startY > endY || (startY === endY && startX > endX)) {
+      // Swap start and end
+      [startX, startY, endX, endY] = [endX, endY, startX, startY];
+    }
+    const before = this.rows[startY].slice(0, startX);
+    const after = this.rows[endY].slice(endX, this.rows[endY].length);
+    this.rows.splice(startY, endY - startY + 1, before + after);
+    this.cx = startX;
+    this.cy = startY;
+    this.selection = null;
+  }
+
   moveCursor = e => {
     const { left } = e.target.getBoundingClientRect();
     this.cx = Math.round((e.clientX - left) / this.letterWidth);
@@ -52,7 +67,9 @@ export default class EditorStore {
   };
 
   backspace() {
-    if (this.cx === 0) {
+    if (this.selection) {
+      this.deleteSelection();
+    } else if (this.cx === 0) {
       if (this.cy === 0) {
         // Can't backspace
         return;

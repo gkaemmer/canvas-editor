@@ -34,26 +34,23 @@ export default class EditorView extends React.Component {
         const width = (end - start) * this.store.letterWidth;
         this.ctx.fillRect(this.toX(start) - 1, this.toY(line) + 0.2* this.store.letterHeight, width + 2, this.store.letterHeight);
       }
+
       this.ctx.fillStyle = "#777";
       let { startX, startY, endX, endY } = this.store.selection;
       if (startY > endY || (startY === endY && startX > endX)) {
+        // Swap start and end
         [startX, startY, endX, endY] = [endX, endY, startX, startY];
       }
       if (startY === endY) {
         // Only highlight one line
         drawSelection(startY, startX, endX);
       } else {
-        // Highlight first line to the end, highlight all lines in between, and
-        // highlight last line from the beginning
-
         // First line
         drawSelection(startY, startX, this.store.rows[startY].length);
-
         // All in between
         for (let y = startY + 1; y < endY; y++) {
           drawSelection(y, 0, this.store.rows[y].length);
         }
-
         // Last line
         drawSelection(endY, 0, endX);
       }
