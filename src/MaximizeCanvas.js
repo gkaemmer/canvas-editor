@@ -20,7 +20,7 @@ export default class MaximizeCanvas extends React.Component {
     window.removeEventListener("resize", this.resizeCanvas);
   }
 
-  resizeCanvas = (e) => {
+  resizeCanvas = e => {
     this.canvas.width = window.innerWidth * ratio;
     this.canvas.height = window.innerHeight * ratio;
     this.ctx.scale(ratio, ratio);
@@ -30,14 +30,24 @@ export default class MaximizeCanvas extends React.Component {
   };
 
   render() {
+    const { style, innerRef, onResize, ...props } = this.props;
     return (
-      <canvas style={{ display: "block", width: "100%", height: "100%" }} ref={canvas => {
-        if (!canvas) return;
-        this.canvas = canvas;
-        this.ctx = canvas.getContext("2d");
-        if (typeof this.props.innerRef === "function")
-          this.props.innerRef(canvas, this.ctx);
-      }} />
+      <canvas
+        style={{
+          display: "block",
+          width: "100%",
+          height: "100%",
+          ...(this.props.style || {})
+        }}
+        ref={canvas => {
+          if (!canvas) return;
+          this.canvas = canvas;
+          this.ctx = canvas.getContext("2d");
+          if (typeof this.props.innerRef === "function")
+            this.props.innerRef(canvas, this.ctx);
+        }}
+        {...props}
+      />
     );
   }
 }

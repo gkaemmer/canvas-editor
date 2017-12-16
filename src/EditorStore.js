@@ -19,6 +19,7 @@ export default class EditorStore {
   cy = 0;
   prevcx = 0;
   letterWidth = 8;
+  selection = null;
 
   replaceRow(rowIndex, rows) {
     Array.prototype.splice.apply(this.rows, [rowIndex, 1, ...rows]);
@@ -58,7 +59,11 @@ export default class EditorStore {
       }
       // Merge this line with the previous one
       this.cx = this.rows[this.cy - 1].length;
-      this.rows.splice(this.cy - 1, 2, this.rows[this.cy - 1] + this.rows[this.cy]);
+      this.rows.splice(
+        this.cy - 1,
+        2,
+        this.rows[this.cy - 1] + this.rows[this.cy]
+      );
       this.cy--;
     } else {
       const oldContent = this.rows[this.cy];
@@ -111,6 +116,39 @@ export default class EditorStore {
       this.type(e.target.value);
       e.target.value = "";
     }
+  };
+
+  handleSelectStart = ({ x, y }) => {
+    y = Math.min(this.rows.length - 1, Math.max(0, y));
+    x = Math.min(this.rows[y].length, Math.max(0, x));
+    this.selection = {
+      startX: x,
+      startY: y,
+      endX: x,
+      endY: y
+    }
+  };
+
+  handleSelectMove = ({ x, y }) => {
+    y = Math.min(this.rows.length - 1, Math.max(0, y));
+    x = Math.min(this.rows[y].length, Math.max(0, x));
+    this.selection = {
+      ...this.selection,
+      endX: x,
+      endY: y
+    }
+    this.onChange();
+  }
+
+  handleSelectEnd = ({ x, y }) => {
+    y = Math.min(this.rows.length - 1, Math.max(0, y));
+    x = Math.min(this.rows[y].length, Math.max(0, x));
+    if (x === this.selection.startX && y === this.selection.startY) {
+      this.selection = null;
+    }
+    this.cx = x;
+    this.cy = y;
+    this.onChange();
   };
 
   setup(onChange) {

@@ -4,6 +4,13 @@ import EditorStore from "./EditorStore";
 
 export default class Editor extends React.Component {
   store = new EditorStore();
+  state = {
+    focused: true
+  }
+
+  componentDidMount() {
+    this.forceUpdate();
+  }
 
   refocus() {
     this.input.focus();
@@ -11,7 +18,7 @@ export default class Editor extends React.Component {
 
   render() {
     return (
-      <div onClick={() => this.refocus()}>
+      <div onMouseUp={() => this.refocus()}>
         <style jsx global>{`
           body {
             margin: 0;
@@ -38,10 +45,12 @@ export default class Editor extends React.Component {
             cursor: text;
           }
         `}</style>
-        <EditorView store={this.store} />
+        <EditorView focused={this.state.focused} store={this.store} />
         <textarea
           ref={input => (this.input = input)}
           onChange={this.store.handleInput}
+          onFocus={() => this.setState({ focused: true })}
+          onBlur={() => this.setState({ focused: false })}
           autoFocus
         />
       </div>
