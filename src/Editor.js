@@ -37,27 +37,6 @@ export default class Editor extends React.Component {
             margin: 0;
           }
         `}</style>
-        <style jsx>{`
-          .editor {
-            padding: 10px;
-          }
-          .editor pre {
-            font: ${EditorStore.font};
-            cursor: text;
-            margin: 0;
-          }
-          textarea {
-            position: absolute;
-            top: -1000px;
-          }
-          .cursor {
-            position: absolute;
-            width: 0;
-            height: 1em;
-            border: 1px solid #ddd;
-            cursor: text;
-          }
-        `}</style>
         <BigCanvas
           style={{ cursor: "text" }}
           innerRef={(canvas, ctx) => {
@@ -70,6 +49,7 @@ export default class Editor extends React.Component {
           onResize={this.renderer.draw}
         />
         <textarea
+          style={{ position: "absolute", top: "-1000px" }}
           ref={input => (this.input = input)}
           onChange={this.store.handleInput}
           onFocus={this.handleFocus}
