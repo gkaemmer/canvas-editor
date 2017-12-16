@@ -12,7 +12,6 @@ function getLetterWidth() {
   el.innerText = "a";
   document.body.appendChild(el);
   const { width } = el.getBoundingClientRect();
-  console.log(width);
   document.body.removeChild(el);
   return width;
 }
@@ -20,11 +19,18 @@ function getLetterWidth() {
 class EditorStore {
   content = "Hello World";
   cursorPosition = this.content.length;
+  letterWidth = 8;
 
   type(text) {
     const oldContent = this.content;
     this.content = oldContent.slice(0, this.cursorPosition) + text + oldContent.slice(this.cursorPosition, oldContent.length);
     this.cursorPosition += text.length;
+    this.onChange();
+  }
+
+  moveCursor = (e) => {
+    const { left } = e.target.getBoundingClientRect();
+    this.cursorPosition = Math.round((e.clientX - left) / this.letterWidth);
     this.onChange();
   }
 
@@ -37,7 +43,6 @@ class EditorStore {
   }
 
   handleKeyDown = e => {
-    console.log(e);
     if (e.code === "Backspace") {
       this.backspace();
     }
@@ -54,11 +59,13 @@ class EditorStore {
   handleInput = e => {
     if (e.target.value) {
       this.type(e.target.value);
+      console.log(e.target.value);
       e.target.value = "";
     }
   };
 
   setup(onChange) {
+    this.letterWidth = getLetterWidth();
     window.addEventListener("keydown", this.handleKeyDown);
     this.onChange = onChange;
   }
@@ -70,11 +77,9 @@ class EditorStore {
 
 export default class Editor extends React.Component {
   store = new EditorStore();
-  width = 14;
 
   componentDidMount() {
     this.store.setup(() => this.forceUpdate());
-    this.width = getLetterWidth();
     this.forceUpdate();
   }
 
@@ -99,11 +104,12 @@ export default class Editor extends React.Component {
         <style jsx>{`
           .editor {
             padding: 10px;
-            font-size: ${fontSize};
-            font-family: ${fontFamily};
           }
-          .editor span {
+          .editor pre {
+            font-family: ${fontFamily};
+            font-size: ${fontSize};
             cursor: text;
+            margin: 0;
           }
           input {
             position: absolute;
@@ -114,14 +120,14 @@ export default class Editor extends React.Component {
             width: 0;
             height: 1em;
             border: 1px solid #ddd;
+            cursor: text;
           }
         `}</style>
         <div className="editor">
           <div className="cursor" style={{
-
-            left: 10 + this.width * this.store.cursorPosition
+            left: 10 + this.store.letterWidth * this.store.cursorPosition - 1
           }} />
-          <span>{this.store.content}</span>
+          <pre onClick={this.store.moveCursor}>{this.store.content}</pre>
         </div>
         <input
           type="text"
