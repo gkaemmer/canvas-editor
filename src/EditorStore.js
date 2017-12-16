@@ -94,8 +94,9 @@ export default class EditorStore {
   }
 
   moveCursor = e => {
+    // Move the cursor, and optionally start/edit a selection
     const shouldSelect = e.shiftKey;
-    const toEnd = e.metaKey;
+    const toEnd = e.metaKey; // whether to go to the end of the line (home/end)
     if (shouldSelect && !this.selection) {
       this.selection = { startX: this.cx, startY: this.cy };
     }
