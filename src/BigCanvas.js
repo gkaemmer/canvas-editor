@@ -22,8 +22,10 @@ export default class BigCanvas extends React.Component {
   }
 
   resizeCanvas = e => {
-    this.canvas.width = window.innerWidth * ratio;
-    this.canvas.height = window.innerHeight * ratio;
+    console.log(this.canvas.offsetWidth);
+    this.canvas.width = this.canvas.offsetWidth * ratio;
+    this.canvas.height = this.canvas.offsetHeight * ratio;
+    console.log(this.canvas.width, this.canvas.height);
     this.ctx.scale(ratio, ratio);
     this.forceUpdate();
     if (typeof e !== "undefined" && typeof this.props.onResize === "function")

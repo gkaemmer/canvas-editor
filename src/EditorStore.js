@@ -104,13 +104,19 @@ export default class EditorStore {
       if (toEnd) {
         this.cx = 0;
       } else {
-        if (this.cx === 0) {
-          if (this.cy > 0) {
-            this.cy--;
-            this.cx = this.rows[this.cy].length;
-          }
+        if (this.selection) {
+          // Move cursor to the start of selection
+          this.cx = this.selection.startX;
+          this.cy = this.selection.startY;
         } else {
-          this.cx--;
+          if (this.cx === 0) {
+            if (this.cy > 0) {
+              this.cy--;
+              this.cx = this.rows[this.cy].length;
+            }
+          } else {
+            this.cx--;
+          }
         }
       }
       this.prevcx = this.cx;
@@ -118,13 +124,19 @@ export default class EditorStore {
       if (toEnd) {
         this.cx = this.rows[this.cy].length;
       } else {
-        if (this.cx >= this.rows[this.cy].length) {
-          if (this.cy < this.rows.length - 1) {
-            this.cy++;
-            this.cx = 0;
-          }
+        if (this.selection) {
+          // Move cursor to the end of selection
+          this.cx = this.selection.endX;
+          this.cy = this.selection.endY;
         } else {
-          this.cx++;
+          if (this.cx >= this.rows[this.cy].length) {
+            if (this.cy < this.rows.length - 1) {
+              this.cy++;
+              this.cx = 0;
+            }
+          } else {
+            this.cx++;
+          }
         }
       }
       this.prevcx = this.cx;

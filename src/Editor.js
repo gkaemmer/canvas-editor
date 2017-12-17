@@ -8,7 +8,7 @@ export default class Editor extends React.Component {
   renderer = new EditorRenderer();
 
   componentDidMount() {
-    this.renderer.setup(this.canvas, this.ctx, this.store);
+    this.renderer.setup(this.canvas, this.ctx, this.store, this.input);
   }
 
   refocus() {
@@ -37,19 +37,23 @@ export default class Editor extends React.Component {
             margin: 0;
           }
         `}</style>
-        <BigCanvas
-          style={{ cursor: "text" }}
-          innerRef={(canvas, ctx) => {
-            this.canvas = canvas;
-            this.ctx = ctx;
-          }}
-          onMouseDown={this.renderer.handleMouseDown}
-          onMouseMove={this.renderer.handleMouseMove}
-          onMouseUp={this.renderer.handleMouseUp}
-          onResize={this.renderer.draw}
-        />
+        <div
+          style={{ position: "fixed", zIndex: 2, top: 0, left: 0, bottom: 0, right: 0 }}
+        >
+          <BigCanvas
+            style={{ cursor: "text" }}
+            innerRef={(canvas, ctx) => {
+              this.canvas = canvas;
+              this.ctx = ctx;
+            }}
+            onMouseDown={this.renderer.handleMouseDown}
+            onMouseMove={this.renderer.handleMouseMove}
+            onMouseUp={this.renderer.handleMouseUp}
+            onResize={this.renderer.draw}
+          />
+        </div>
         <textarea
-          style={{ position: "absolute", top: "-1000px" }}
+          style={{ position: "absolute", zIndex: 1, resize: "none", width: 0, height: 0 }}
           ref={input => (this.input = input)}
           onChange={this.store.handleInput}
           onFocus={this.handleFocus}
