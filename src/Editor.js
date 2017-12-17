@@ -2,6 +2,7 @@ import React from "react";
 import BigCanvas from "./BigCanvas";
 import EditorStore from "./EditorStore";
 import EditorRenderer from "./EditorRenderer";
+import Debug from "./Debug";
 
 export default class Editor extends React.Component {
   store = new EditorStore();
@@ -37,29 +38,32 @@ export default class Editor extends React.Component {
             margin: 0;
           }
         `}</style>
+        <Debug renderer={this.renderer} store={this.store} />
         <div
-          style={{ position: "fixed", zIndex: 2, top: 0, left: 0, bottom: 0, right: 0 }}
+          style={{ position: "fixed", top: 0, left: 200, bottom: 0, right: 0 }}
         >
-          <BigCanvas
-            style={{ cursor: "text" }}
-            innerRef={(canvas, ctx) => {
-              this.canvas = canvas;
-              this.ctx = ctx;
-            }}
-            onMouseDown={this.renderer.handleMouseDown}
-            onMouseMove={this.renderer.handleMouseMove}
-            onMouseUp={this.renderer.handleMouseUp}
-            onResize={this.renderer.draw}
+          <textarea
+            style={{ position: "absolute", width: 0, height: 0 }}
+            ref={input => (this.input = input)}
+            onChange={this.store.handleInput}
+            onFocus={this.handleFocus}
+            onBlur={this.handleBlur}
+            autoFocus
           />
+          <div style={{ position: "absolute", width: "100%", height: "100%" }}>
+            <BigCanvas
+              style={{ cursor: "text" }}
+              innerRef={(canvas, ctx) => {
+                this.canvas = canvas;
+                this.ctx = ctx;
+              }}
+              onMouseDown={this.renderer.handleMouseDown}
+              onMouseMove={this.renderer.handleMouseMove}
+              onMouseUp={this.renderer.handleMouseUp}
+              onResize={this.renderer.draw}
+            />
+          </div>
         </div>
-        <textarea
-          style={{ position: "absolute", zIndex: 1, resize: "none", width: 0, height: 0 }}
-          ref={input => (this.input = input)}
-          onChange={this.store.handleInput}
-          onFocus={this.handleFocus}
-          onBlur={this.handleBlur}
-          autoFocus
-        />
       </div>
     );
   }

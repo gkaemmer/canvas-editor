@@ -1,26 +1,11 @@
-const font = "14px Monaco, Consolas, monospace";
-
-function getLetterSize() {
-  const el = document.createElement("div");
-  el.style.font = font;
-  el.style.position = "absolute";
-  el.style.top = "-1000px";
-  el.innerText = "a";
-  document.body.appendChild(el);
-  const { width, height } = el.getBoundingClientRect();
-  document.body.removeChild(el);
-  return { width, height };
-}
-
 export default class EditorStore {
-  static font = font;
   rows = ["Hello world"];
   cx = 0;
   cy = 0;
   prevcx = 0;
-  letterWidth = 8;
   selection = null;
   focused = true;
+  firstRow = 0;
 
   replaceRow(rowIndex, rows) {
     Array.prototype.splice.apply(this.rows, [rowIndex, 1, ...rows]);
@@ -44,15 +29,12 @@ export default class EditorStore {
       this.rows[this.cy] = before + text + after;
       this.cx += text.length;
     }
+    this.prevcx = this.cx;
     this.onChange();
   }
 
   deleteSelection() {
-    let { startX, startY, endX, endY } = this.selection;
-    if (startY > endY || (startY === endY && startX > endX)) {
-      // Swap start and end
-      [startX, startY, endX, endY] = [endX, endY, startX, startY];
-    }
+    let { startX, startY, endX, endY } = this.normalizedSelection;
     const before = this.rows[startY].slice(0, startX);
     const after = this.rows[endY].slice(endX, this.rows[endY].length);
     this.rows.splice(startY, endY - startY + 1, before + after);
@@ -60,12 +42,6 @@ export default class EditorStore {
     this.cy = startY;
     this.selection = null;
   }
-
-  moveCursor = e => {
-    const { left } = e.target.getBoundingClientRect();
-    this.cx = Math.round((e.clientX - left) / this.letterWidth);
-    this.onChange();
-  };
 
   backspace() {
     if (this.selection) {
@@ -104,10 +80,10 @@ export default class EditorStore {
       if (toEnd) {
         this.cx = 0;
       } else {
-        if (this.selection) {
+        if (!shouldSelect && this.selection) {
           // Move cursor to the start of selection
-          this.cx = this.selection.startX;
-          this.cy = this.selection.startY;
+          this.cx = this.normalizedSelection.startX;
+          this.cy = this.normalizedSelection.startY;
         } else {
           if (this.cx === 0) {
             if (this.cy > 0) {
@@ -124,10 +100,10 @@ export default class EditorStore {
       if (toEnd) {
         this.cx = this.rows[this.cy].length;
       } else {
-        if (this.selection) {
+        if (!shouldSelect && this.selection) {
           // Move cursor to the end of selection
-          this.cx = this.selection.endX;
-          this.cy = this.selection.endY;
+          this.cx = this.normalizedSelection.endX;
+          this.cy = this.normalizedSelection.endY;
         } else {
           if (this.cx >= this.rows[this.cy].length) {
             if (this.cy < this.rows.length - 1) {
@@ -200,6 +176,8 @@ export default class EditorStore {
   handleSelectStart = ({ x, y }) => {
     y = Math.min(this.rows.length - 1, Math.max(0, y));
     x = Math.min(this.rows[y].length, Math.max(0, x));
+    this.cx = x;
+    this.cy = y;
     this.selection = {
       startX: x,
       startY: y,
@@ -211,6 +189,8 @@ export default class EditorStore {
   handleSelectMove = ({ x, y }) => {
     y = Math.min(this.rows.length - 1, Math.max(0, y));
     x = Math.min(this.rows[y].length, Math.max(0, x));
+    this.cx = x;
+    this.cy = y;
     this.selection = {
       ...this.selection,
       endX: x,
@@ -231,14 +211,22 @@ export default class EditorStore {
   };
 
   setup(onChange) {
-    const { width, height } = getLetterSize();
-    this.letterWidth = width;
-    this.letterHeight = height;
     window.addEventListener("keydown", this.handleKeyPress);
+    this.isSetup = true;
     this.onChange = onChange;
   }
 
   teardown() {
     window.removeEventListener("keydown", this.handleKeyPress);
+  }
+
+  // Normalized selection is guaranteed to have start before/above end
+  get normalizedSelection() {
+    let { startX, startY, endX, endY } = this.selection;
+    if (startY > endY || (startY === endY && startX > endX)) {
+      // Swap start and end
+      [startX, startY, endX, endY] = [endX, endY, startX, startY];
+    }
+    return { startX, startY, endX, endY };
   }
 }
