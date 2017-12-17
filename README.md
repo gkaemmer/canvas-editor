@@ -11,7 +11,9 @@ For now it's just a prototype, but this type of rendering could (maybe) simplify
 
 So many things
 
-- Scrolling/buffering
+- ~Scrolling/buffering~
+- Break keyboard event management into a separate module
+- Render multiple layers separately (background, selection, text, cursor)
 - File I/O
 - Copying/cutting (pasting already works)
 - Double/triple clicking to select words/lines
