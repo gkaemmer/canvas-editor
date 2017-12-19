@@ -7,6 +7,10 @@ export default class EditorStore {
   focused = true;
   firstRow = 0;
 
+  constructor(renderer) {
+    this.renderer = renderer;
+  }
+
   replaceRow(rowIndex, rows) {
     Array.prototype.splice.apply(this.rows, [rowIndex, 1, ...rows]);
   }
@@ -30,6 +34,7 @@ export default class EditorStore {
       this.cx += text.length;
     }
     this.prevcx = this.cx;
+    this.renderer.scrollCursorIntoView();
     this.onChange();
   }
 
@@ -121,8 +126,7 @@ export default class EditorStore {
         this.cy = 0;
         this.cx = 0;
       } else {
-        if (this.cy <= 0)
-          this.cx = this.prevcx = 0;
+        if (this.cy <= 0) this.cx = this.prevcx = 0;
         else {
           this.cy--;
           this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
@@ -141,7 +145,10 @@ export default class EditorStore {
         }
       }
     }
-    if (shouldSelect) {
+    if (
+      shouldSelect &&
+      (this.cx !== this.selection.startX || this.cy !== this.selection.startY)
+    ) {
       this.selection = {
         ...this.selection,
         endX: this.cx,
@@ -150,6 +157,7 @@ export default class EditorStore {
     } else {
       this.selection = null;
     }
+    this.renderer.scrollCursorIntoView();
     this.onChange();
   };
 

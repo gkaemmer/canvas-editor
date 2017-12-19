@@ -22,6 +22,7 @@ export default class Debug extends React.Component {
       <div
         style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 200 }}
       >
+        Draw took {this.props.renderer.drawTime}ms<br />
         First row: {this.props.renderer.firstRow}
         <br />
         Visible lines: {this.props.renderer.visibleLines}
@@ -32,7 +33,7 @@ export default class Debug extends React.Component {
               selection.endX
             }, {selection.endY})
           </div>
-        )}
+        )}<br />
       </div>
     );
   }

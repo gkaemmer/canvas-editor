@@ -1,7 +1,9 @@
 import EditorStore from "./EditorStore";
+import theme from "./theme";
+import Prism from "prismjs";
 
 const PADDING = 10;
-const font = "14px Monaco, Consolas, monospace";
+const font = "13px Menlo, monospace";
 
 function getLetterSize() {
   const el = document.createElement("div");
@@ -18,6 +20,8 @@ function getLetterSize() {
 // Handles rendering of the canvas, and responding to display-specific mouse
 // events
 export default class Renderer {
+  scrollY = 0;
+
   static font = font;
   setup(canvas, ctx, store, input) {
     this.canvas = canvas;
@@ -30,12 +34,12 @@ export default class Renderer {
     {
       const { width, height } = getLetterSize();
       this.letterWidth = width;
-      this.letterHeight = height;
+      this.letterHeight = height * 1.1;
     }
 
     {
       const { top, left, height } = this.canvas.getBoundingClientRect();
-      this.visibleLines = Math.floor(height / this.letterHeight) - 1;
+      this.visibleLines = Math.floor((height - 2 * PADDING) / this.letterHeight);
       [this.canvasX, this.canvasY] = [left, top];
     }
     this.draw();
@@ -51,24 +55,19 @@ export default class Renderer {
 
   draw = () => {
     const start = new Date().getTime();
-    this.ctx.fillStyle = "#23211d";
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    const ctx = this.ctx;
+    ctx.fillStyle = theme.background;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     this.gutterWidth =
       Math.max(2, Math.floor(Math.log10(this.store.rows.length)) + 1) *
       this.letterWidth;
 
-    // Adjust visible region depending on cursor position
-    if (this.store.cy > this.firstRow + this.visibleLines - 1)
-      this.firstRow = this.store.cy - this.visibleLines + 1;
-    if (this.store.cy < this.firstRow)
-      this.firstRow = this.store.cy;
-
     // Selection
     if (this.store.selection) {
       const drawSelection = (line, start, end) => {
         const width = (end - start) * this.letterWidth;
-        this.ctx.fillRect(
+        ctx.fillRect(
           this.toX(start) - 1,
           this.toY(line - this.firstRow) + 0.2 * this.letterHeight,
           width + 2,
@@ -76,7 +75,7 @@ export default class Renderer {
         );
       };
 
-      this.ctx.fillStyle = "#777";
+      ctx.fillStyle = "#555";
       let { startX, startY, endX, endY } = this.store.normalizedSelection;
       if (startY === endY) {
         // Only highlight one line
@@ -100,23 +99,51 @@ export default class Renderer {
       const row = this.store.rows[line];
       const rowy = this.toY(i) + this.letterHeight;
       const rowNumber = (line + 1).toString();
-      this.ctx.font = font;
+      ctx.font = font;
 
       // Line number
-      this.ctx.fillStyle = "#777";
-      this.ctx.fillText(
+      ctx.fillStyle = "#777";
+      ctx.fillText(
         rowNumber,
         PADDING + this.gutterWidth - this.letterWidth * rowNumber.length,
         rowy
       );
 
-      this.ctx.fillStyle = "#ddd";
-      this.ctx.fillText(row, this.toX(0), rowy);
+      // Syntax highlighted row
+      // TODO: this breaks when syntax trees span multiple lines
+      ctx.fillStyle = "#ddd";
+      const tokens = Prism.tokenize(row, Prism.languages.js);
+      if (!tokens) continue;
+
+      let x = this.toX(0);
+      let y = rowy;
+      function drawText(text) {
+        ctx.fillText(text, x, y);
+        x += ctx.measureText(text).width;
+      }
+      for (let token of tokens) {
+        if (typeof token === "string") {
+          drawText(token);
+        } else {
+          let oldFillStyle = ctx.fillStyle;
+          let oldFont = ctx.font;
+          const elementTypes = [token.type];
+          if (token.alias) elementTypes.push(token.alias);
+          const [color, bold, italic] = theme.text(elementTypes);
+          if (bold) ctx.font = "bold " + ctx.font;
+          if (italic) ctx.font = "italic " + ctx.font;
+          ctx.fillStyle = color;
+          drawText(token.content);
+          ctx.fillStyle = oldFillStyle;
+          ctx.font = oldFont;
+        }
+      }
     }
 
     if (this.store.focused) {
       // Draw cursor
-      this.ctx.fillRect(
+      ctx.fillStyle = "#ddd";
+      ctx.fillRect(
         this.toX(this.store.cx) - 1,
         this.toY(0.2 + this.store.cy - this.firstRow),
         2,
@@ -126,8 +153,16 @@ export default class Renderer {
       this.input.style.top = this.toY(0.2 + this.store.cy) + "px";
     }
 
-    console.log("Draw took", new Date().getTime() - start + "ms");
+    this.drawTime = new Date().getTime() - start;
   };
+
+  scrollCursorIntoView() {
+    // Adjust visible region depending on cursor position
+    if (this.store.cy > this.firstRow + this.visibleLines - 1)
+      this.firstRow = this.store.cy - this.visibleLines + 1;
+    if (this.store.cy < this.firstRow)
+      this.firstRow = this.store.cy;
+  }
 
   handleMouseDown = e => {
     this.isMouseDown = true;
@@ -162,4 +197,25 @@ export default class Renderer {
     let y = Math.floor((rawY - PADDING) / this.letterHeight);
     this.store.handleSelectMove({ x, y: y + this.firstRow });
   };
+
+  handleScroll = e => {
+    e.preventDefault();
+    this.scrollY += e.deltaY;
+    let scrolled = false;
+    while (this.scrollY > 10) {
+      if (this.firstRow < this.store.rows.length - this.visibleLines) {
+        this.firstRow++;
+        scrolled = true;
+      }
+      this.scrollY -= 10;
+    }
+    while (this.scrollY < -10) {
+      if (this.firstRow > 0) {
+        this.firstRow--;
+        scrolled = true;
+      }
+      this.scrollY += 10;
+    }
+    if (scrolled) this.draw();
+  }
 }

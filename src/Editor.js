@@ -5,8 +5,8 @@ import EditorRenderer from "./EditorRenderer";
 import Debug from "./Debug";
 
 export default class Editor extends React.Component {
-  store = new EditorStore();
   renderer = new EditorRenderer();
+  store = new EditorStore(this.renderer);
 
   componentDidMount() {
     this.renderer.setup(this.canvas, this.ctx, this.store, this.input);
@@ -60,6 +60,7 @@ export default class Editor extends React.Component {
               onMouseDown={this.renderer.handleMouseDown}
               onMouseMove={this.renderer.handleMouseMove}
               onMouseUp={this.renderer.handleMouseUp}
+              onWheel={this.renderer.handleScroll}
               onResize={this.renderer.draw}
             />
           </div>

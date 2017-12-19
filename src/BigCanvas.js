@@ -45,7 +45,7 @@ export default class BigCanvas extends React.Component {
         ref={canvas => {
           if (!canvas) return;
           this.canvas = canvas;
-          this.ctx = canvas.getContext("2d");
+          this.ctx = canvas.getContext("2d", {alpha: false});
           if (typeof this.props.innerRef === "function")
             this.props.innerRef(canvas, this.ctx);
         }}
