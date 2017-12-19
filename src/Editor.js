@@ -3,12 +3,14 @@ import BigCanvas from "./BigCanvas";
 import EditorStore from "./EditorStore";
 import EditorRenderer from "./EditorRenderer";
 import Debug from "./Debug";
+import defaultText from "./default";
 
 export default class Editor extends React.Component {
   renderer = new EditorRenderer();
   store = new EditorStore(this.renderer);
 
   componentDidMount() {
+    this.store.load(defaultText);
     this.renderer.setup(this.canvas, this.ctx, this.store, this.input);
   }
 

@@ -1,5 +1,5 @@
 export default class EditorStore {
-  rows = ["Hello world"];
+  rows = [];
   cx = 0;
   cy = 0;
   prevcx = 0;
@@ -13,6 +13,10 @@ export default class EditorStore {
 
   replaceRow(rowIndex, rows) {
     Array.prototype.splice.apply(this.rows, [rowIndex, 1, ...rows]);
+  }
+
+  load(text) {
+    this.rows = text.split("\n");
   }
 
   type(text) {
@@ -204,6 +208,7 @@ export default class EditorStore {
       endX: x,
       endY: y
     };
+    this.renderer.scrollCursorIntoView();
     this.onChange();
   };
 
