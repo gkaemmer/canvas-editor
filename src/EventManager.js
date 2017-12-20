@@ -1,5 +1,7 @@
 import { directions } from "./EditorStore";
 
+const doubleClickSpeed = 350; // ms
+
 // Allow mac users to use command where windows+linux use control
 function hasSuperKey(event) {
   const isMac = window.navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -9,6 +11,10 @@ function hasSuperKey(event) {
 
 export default class EventManager {
   isMouseDown = false;
+
+  canDoubleClick = false;
+  canTripleClick = false;
+  clickTimeout = null;
 
   handleKeyDown = e => {
     if (e.code === "Backspace") {
@@ -41,7 +47,17 @@ export default class EventManager {
     });
   };
 
+  resetClickTimeout() {
+    clearTimeout(this.clickTimeout);
+    this.clickTimeout = setTimeout(() => {
+      this.canDoubleClick = false;
+      this.canTripleClick = false;
+    }, doubleClickSpeed);
+  }
+
   handleMouseDown = e => {
+    e.preventDefault();
+
     this.isMouseDown = true;
     let rawX = e.clientX - this.canvasX;
     let rawY = e.clientY - this.canvasY;
@@ -49,7 +65,19 @@ export default class EventManager {
     let y = this.renderer.fromY(rawY);
     this.store.handleSelectStart({ x, y: y });
     this.input.focus();
-    e.preventDefault();
+
+    // Handle double/triple click
+    if (this.canTripleClick) {
+      this.store.selectLine();
+      this.canTripleClick = false;
+      this.canDoubleClick = false;
+    } else if (this.canDoubleClick) {
+      this.store.selectWord();
+      this.canTripleClick = true;
+    } else {
+      this.canDoubleClick = true;
+    }
+    this.resetClickTimeout();
   };
 
   handleMouseUp = e => {

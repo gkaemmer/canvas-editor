@@ -2,8 +2,11 @@ export const directions = {
   UP: "up",
   DOWN: "down",
   LEFT: "left",
-  RIGHT: "right"
+  RIGHT: "right",
+  ABSOLUTE: "absolute"
 };
+
+const wordSeparators = "./\\()\"'-:,.;<>~!@#$%^&*|+=[]{}`~? ";
 
 export default class EditorStore {
   rows = [];
@@ -86,10 +89,13 @@ export default class EditorStore {
     this.renderer.draw();
   }
 
-  moveCursor = (direction, { select, byWord, toEnd }) => {
+  moveCursor(direction, { select, byWord, toEnd, x, y }) {
+
+    console.log("Moving cursor", arguments);
     // Move the cursor, and optionally start/edit a selection
+    let newSelection;
     if (select && !this.selection) {
-      this.selection = { startX: this.cx, startY: this.cy };
+      newSelection = { startX: this.cx, startY: this.cy };
     }
 
     switch (direction) {
@@ -159,17 +165,20 @@ export default class EditorStore {
             this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
           }
         }
+        break;
+      case directions.ABSOLUTE:
+        this.cx = x;
+        this.prevcx = x;
+        this.cy = y;
+        break;
     }
 
-    if (
-      select &&
-      (this.cx !== this.selection.startX || this.cy !== this.selection.startY)
-    ) {
-      this.selection = {
-        ...this.selection,
+    if (select) {
+      this.setSelectionIfNeeded({
+        ...(newSelection || this.selection),
         endX: this.cx,
         endY: this.cy
-      };
+      });
     } else {
       this.selection = null;
     }
@@ -177,43 +186,82 @@ export default class EditorStore {
     this.renderer.drawQuick();
   };
 
-  handleSelectStart = ({ x, y }) => {
+  handleSelectStart({ x, y }) {
     y = Math.min(this.rows.length - 1, Math.max(0, y));
     x = Math.min(this.rows[y].length, Math.max(0, x));
-    this.cx = x;
-    this.cy = y;
-    this.selection = {
-      startX: x,
-      startY: y,
-      endX: x,
-      endY: y
-    };
+    this.moveCursor(directions.ABSOLUTE, { x, y });
   };
 
-  handleSelectMove = ({ x, y }) => {
+  handleSelectMove({ x, y }) {
     y = Math.min(this.rows.length - 1, Math.max(0, y));
     x = Math.min(this.rows[y].length, Math.max(0, x));
-    this.cx = x;
-    this.cy = y;
-    this.selection = {
-      ...this.selection,
-      endX: x,
-      endY: y
-    };
+    this.moveCursor(directions.ABSOLUTE, { select: true, x, y });
     this.renderer.scrollCursorIntoView();
     this.renderer.drawQuick();
   };
 
-  handleSelectEnd = ({ x, y }) => {
-    y = Math.min(this.rows.length - 1, Math.max(0, y));
-    x = Math.min(this.rows[y].length, Math.max(0, x));
-    if (x === this.selection.startX && y === this.selection.startY) {
+  handleSelectEnd({ x, y }) {
+    // NO op
+    // y = Math.min(this.rows.length - 1, Math.max(0, y));
+    // x = Math.min(this.rows[y].length, Math.max(0, x));
+    // if (x === this.selection.startX && y === this.selection.startY) {
+    //   this.selection = null;
+    // }
+    // this.cx = x;
+    // this.cy = y;
+    // this.renderer.drawQuick();
+  };
+
+  prevWordStart(line, index) {
+    let x = index;
+    while (x >= 0 && wordSeparators.indexOf(line[x]) < 0) {
+      // Keep looking
+      x--;
+    }
+    return x+1;
+  }
+
+  nextWordEnd(line, index) {
+    let x = index;
+    while (x < line.length && wordSeparators.indexOf(line[x]) < 0) {
+      // Keep looking
+      x++;
+    }
+    return x;
+  }
+
+  selectWord() {
+    const endX = this.nextWordEnd(this.rows[this.cy], this.cx);
+    this.setSelectionIfNeeded({
+      startX: this.prevWordStart(this.rows[this.cy], this.cx),
+      startY: this.cy,
+      endX,
+      endY: this.cy
+    });
+    this.cx = endX;
+    this.renderer.drawQuick();
+  }
+
+  selectLine() {
+    this.cx = 0;
+    this.setSelectionIfNeeded({
+      startX: 0,
+      startY: this.cy,
+      endX: 0,
+      endY: this.cy + 1
+    });
+    this.cy++;
+    this.renderer.drawQuick();
+  }
+
+  setSelectionIfNeeded(newSelection) {
+    if (!newSelection) this.selection = null;
+    if (newSelection.endX !== newSelection.startX || newSelection.endY !== newSelection.startY) {
+      this.selection = newSelection;
+    } else {
       this.selection = null;
     }
-    this.cx = x;
-    this.cy = y;
-    this.renderer.drawQuick();
-  };
+  }
 
   setup() {
     this.isSetup = true;
