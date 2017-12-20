@@ -57,14 +57,15 @@ export default class EventManager {
 
   handleMouseDown = e => {
     e.preventDefault();
+    this.input.focus();
 
     this.isMouseDown = true;
     let rawX = e.clientX - this.canvasX;
     let rawY = e.clientY - this.canvasY;
     let x = this.renderer.fromX(rawX);
     let y = this.renderer.fromY(rawY);
-    this.store.handleSelectStart({ x, y: y });
-    this.input.focus();
+    let select = e.shiftKey;
+    this.store.moveCursor(directions.ABSOLUTE, { select, x, y });
 
     // Handle double/triple click
     if (this.canTripleClick) {
@@ -82,20 +83,16 @@ export default class EventManager {
 
   handleMouseUp = e => {
     this.isMouseDown = false;
-    let rawX = e.clientX - this.canvasX;
-    let rawY = e.clientY - this.canvasY;
-    let x = this.renderer.fromX(rawX);
-    let y = this.renderer.fromY(rawY);
-    this.store.handleSelectEnd({ x, y: y });
   };
 
   handleMouseMove = e => {
     if (!this.isMouseDown) return;
+    // Dragging
     let rawX = e.clientX - this.canvasX;
     let rawY = e.clientY - this.canvasY;
     let x = this.renderer.fromX(rawX);
     let y = this.renderer.fromY(rawY);
-    this.store.handleSelectMove({ x, y: y });
+    this.store.moveCursor(directions.ABSOLUTE, { select: true, x, y });
   };
 
   handleWheel = e => {
