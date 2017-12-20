@@ -10,27 +10,19 @@ const wordSeparators = "./\\()\"'-:,.;<>~!@#$%^&*|+=[]{}`~? ";
 
 function prevWordStart(line, index) {
   let x = index - 1;
-  let foundLetter = false;
-  while (!foundLetter || x >= 0 && wordSeparators.indexOf(line[x]) < 0) {
+  while (x >= 0 && wordSeparators.indexOf(line[x]) < 0) {
     // Keep looking
     x--;
-    foundLetter = true;
   }
-  if (x + 1 > index - 1 && index > 0)
-    return index - 1;
   return x + 1;
 }
 
 function nextWordEnd(line, index) {
   let x = index;
-  let foundLetter = false;
-  while (!foundLetter || x < line.length && wordSeparators.indexOf(line[x]) < 0) {
+  while (x < line.length && wordSeparators.indexOf(line[x]) < 0) {
     // Keep looking
     x++;
-    foundLetter = true;
   }
-  if (x < index + 1 && index < line.length)
-    return index + 1;
   return x;
 }
 
@@ -123,7 +115,16 @@ export default class EditorStore {
         if (toEnd) {
           this.cx = 0;
         } else if (byWord) {
-          this.cx = prevWordStart(this.rows[this.cy], this.cx);
+          // Move by word, unless at the beginning of a line
+          if (this.cx <= 0) {
+            if (this.cy > 0) {
+              this.cy--;
+              this.cx = this.rows[this.cy].length;
+              this.prevcx = this.cx;
+            }
+          } else {
+            this.cx = prevWordStart(this.rows[this.cy], this.cx - 1);
+          }
         } else {
           if (!select && this.selection) {
             // Move cursor to the start of selection
@@ -146,7 +147,16 @@ export default class EditorStore {
         if (toEnd) {
           this.cx = this.rows[this.cy].length;
         } else if (byWord) {
-          this.cx = nextWordEnd(this.rows[this.cy], this.cx);
+          // Move by word, unless at the end of a line
+          if (this.cx >= this.rows[this.cy].length) {
+            if (this.cy < this.rows.length - 1) {
+              this.cy++;
+              this.cx = 0;
+              this.prevcx = this.cx;
+            }
+          } else {
+            this.cx = nextWordEnd(this.rows[this.cy], this.cx + 1);
+          }
         } else {
           if (!select && this.selection) {
             // Move cursor to the end of selection
@@ -176,6 +186,7 @@ export default class EditorStore {
             this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
           }
         }
+        this.prevcx = this.cx;
         break;
       case directions.DOWN:
         if (toEnd) {
@@ -189,6 +200,7 @@ export default class EditorStore {
             this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
           }
         }
+        this.prevcx = this.cx;
         break;
       case directions.ABSOLUTE:
         // Bound x, y to possible values

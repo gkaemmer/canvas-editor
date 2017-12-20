@@ -17,7 +17,7 @@ So many things
 - File I/O
 - Copying/cutting (pasting already works)
 - ~Double/triple clicking to select words/lines~
-- More keyboard shortcuts (ctrl-a, etc)
+- ~More keyboard shortcuts (ctrl-a, etc)~
 - Finding/replacing
 - Dead keys (ä, é, etc)
 - Multiselect

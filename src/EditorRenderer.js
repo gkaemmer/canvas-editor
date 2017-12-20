@@ -130,9 +130,9 @@ export default class EditorRenderer {
       ctx.fillStyle = "rgba(221, 221, 221, " + cursorOpacity + ")";
       ctx.fillRect(
         this.toX(this.store.cx) - 1,
-        this.toY(0.2 + this.store.cy),
+        this.toY(this.store.cy) + 0.1 * this.letterHeight,
         2,
-        this.letterHeight
+        this.letterHeight * 1.2
       );
       this.input.style.left = this.toX(this.store.cx) + "px";
       this.input.style.top = this.toY(0.2 + this.store.cy) + "px";
