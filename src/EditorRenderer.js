@@ -17,6 +17,17 @@ function getLetterSize() {
   return { width, height };
 }
 
+function createLayer(otherCanvas, otherCtx) {
+  const canvas = document.createElement("canvas");
+  canvas.width = otherCanvas.width;
+  canvas.height = otherCanvas.height;
+  const ctx = canvas.getContext("2d");
+  const scale = canvas.width / canvas.innerWidth;
+  ctx.scale(2, 2);
+  console.log(ctx);
+  return { canvas, ctx };
+}
+
 // Handles rendering of the canvas, and responding to display-specific mouse
 // events
 export default class Renderer {
@@ -29,6 +40,8 @@ export default class Renderer {
     this.store = store;
     this.input = input;
     this.firstRow = 0;
+    this.textLayer = createLayer(canvas, ctx);
+    this.cursorLayer = createLayer(canvas, ctx);
     this.store.setup(() => this.draw());
 
     const { width, height } = getLetterSize();
@@ -64,7 +77,7 @@ export default class Renderer {
 
   draw = () => {
     const start = new Date().getTime();
-    const ctx = this.ctx;
+    let ctx = this.textLayer.ctx;
     ctx.fillStyle = theme.background;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -152,12 +165,18 @@ export default class Renderer {
       }
     }
 
+    this.ctx.save();
+    this.ctx.scale(0.5, 0.5);
+    this.ctx.drawImage(this.textLayer.canvas, 0, -2 * this.scrollY);
+    this.ctx.restore();
+
+    ctx = this.ctx;
     if (this.store.focused) {
       // Draw cursor
       ctx.fillStyle = "#ddd";
       ctx.fillRect(
         this.toX(this.store.cx) - 1,
-        this.toY(0.2 + this.store.cy),
+        this.toY(0.2 + this.store.cy) - this.scrollY,
         2,
         this.letterHeight
       );
@@ -177,21 +196,28 @@ export default class Renderer {
 
   scroll(amount) {
     this.scrollY += amount;
+    if ((this.firstRow <= 0 && this.scrollY < 0 ||
+      (this.firstRow >= this.store.rows.length - this.visibleLines) && this.scrollY > 0))
+      this.scrollY = 0;
     let scrolled = false;
     while (this.scrollY > this.letterHeight) {
       if (this.firstRow < this.store.rows.length - this.visibleLines) {
         this.firstRow++;
         scrolled = true;
+        this.scrollY -= this.letterHeight;
+      } else {
+        this.scrollY = 0;
       }
-      this.scrollY -= this.letterHeight;
     }
     while (this.scrollY < -this.letterHeight) {
       if (this.firstRow > 0) {
         this.firstRow--;
         scrolled = true;
+        this.scrollY += this.letterHeight;
+      } else {
+        this.scrollY = 0;
       }
-      this.scrollY += this.letterHeight;
     }
-    if (scrolled) this.draw();
+    this.draw();
   }
 }

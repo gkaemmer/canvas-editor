@@ -220,9 +220,6 @@ export default class EditorStore {
     this.onChange = onChange;
   }
 
-  teardown() {
-  }
-
   // Normalized selection is guaranteed to have start before/above end
   get normalizedSelection() {
     let { startX, startY, endX, endY } = this.selection;
