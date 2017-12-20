@@ -167,21 +167,10 @@ export default class EditorRenderer {
 
       let x = this.toX(0);
       let y = rowy;
-      const drawText = (text) => {
-        if (Array.isArray(text)) {
-          for (let innerText of text) {
-            // This might not work, TODO
-            drawText(innerText);
-          }
-        } else {
-          ctx.fillText(text, x, y);
-          x += text.length * this.letterWidth;
-        }
-      }
-      for (let token of tokens) {
-        if (typeof token === "string") {
-          drawText(token);
-        } else {
+      const drawToken = (token) => {
+        if (Array.isArray(token)) {
+          token.forEach(inner => drawToken(inner));
+        } else if (typeof token === "object") {
           let oldFillStyle = ctx.fillStyle;
           let oldFont = ctx.font;
           const elementTypes = [token.type];
@@ -190,11 +179,15 @@ export default class EditorRenderer {
           if (bold) ctx.font = "bold " + ctx.font;
           if (italic) ctx.font = "italic " + ctx.font;
           ctx.fillStyle = color;
-          drawText(token.content);
+          drawToken(token.content);
           ctx.fillStyle = oldFillStyle;
           ctx.font = oldFont;
+        } else if (typeof token === "string") {
+          ctx.fillText(token, x, y);
+          x += token.length * this.letterWidth;
         }
       }
+      tokens.forEach(drawToken);
     }
   }
 
@@ -286,6 +279,6 @@ export default class EditorRenderer {
     this.ctx.scale(pixelRatio, pixelRatio);
     this.textLayer.ctx.scale(pixelRatio, pixelRatio);
     this.bgLayer.ctx.scale(pixelRatio, pixelRatio);
-    this.visibleLines = this.fromY(height - PADDING);
+    this.visibleLines = this.fromY(height - PADDING) - this.firstRow;
   }
 }

@@ -17,6 +17,8 @@ export default class EventManager {
   clickTimeout = null;
 
   handleKeyDown = e => {
+    if (!this.store.focused) return;
+
     if (e.code === "Backspace") {
       this.store.backspace();
     } else if (
@@ -35,6 +37,12 @@ export default class EventManager {
       const toEnd = hasSuperKey(e);
       const byWord = e.altKey;
       this.store.moveCursor(direction, { select, toEnd, byWord });
+    } else if (e.code === "Tab") {
+      e.preventDefault();
+      // Hacky but it works
+      this.store.type(this.store.cx % 2 === 1 ? " " : "  ");
+    } else if (e.code === "KeyA" && hasSuperKey(e)) {
+      this.store.selectAll();
     }
   };
 

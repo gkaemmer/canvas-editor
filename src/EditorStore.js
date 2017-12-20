@@ -35,7 +35,7 @@ function nextWordEnd(line, index) {
 }
 
 export default class EditorStore {
-  rows = [];
+  rows = [""];
   cx = 0;
   cy = 0;
   prevcx = 0;
@@ -238,6 +238,18 @@ export default class EditorStore {
       endY: this.cy + 1
     });
     this.cy++;
+    this.renderer.drawQuick();
+  }
+
+  selectAll() {
+    this.cx = this.rows[this.rows.length - 1].length;
+    this.cy = this.rows.length - 1;
+    this.setSelectionIfNeeded({
+      startX: 0,
+      startY: 0,
+      endX: this.cx,
+      endY: this.cy
+    });
     this.renderer.drawQuick();
   }
 
