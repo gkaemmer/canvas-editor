@@ -43,7 +43,17 @@ export default class EventManager {
       this.store.type(this.store.cx % 2 === 1 ? " " : "  ");
     } else if (e.code === "KeyA" && hasSuperKey(e)) {
       this.store.selectAll();
+    } else if (e.code === "KeyC" && hasSuperKey(e)) {
+      // Copy
+      e.preventDefault();
+      this.copyToClipboard(this.store.getSelectedText());
+    } else if (e.code === "KeyX" && hasSuperKey(e)) {
+      // Cut
+      e.preventDefault();
+      this.copyToClipboard(this.store.getSelectedText());
+      this.store.backspace();
     }
+
   };
 
   handleInput = e => {
@@ -158,5 +168,27 @@ export default class EventManager {
     // Remove event listeners
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("resize", this.handleResize);
+  }
+
+  copyToClipboard(text) {
+    const input = document.createElement("textarea");
+    input.value = text;
+    document.body.appendChild(input);
+    Object.assign(input.style, {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '2em',
+      height: '2em',
+      padding: 0,
+      border: 'none',
+      outline: 'none',
+      boxShadow: 'none',
+      background: 'transparent'
+    });
+    input.select();
+    document.execCommand("copy");
+    document.body.removeChild(input);
+    this.input.focus();
   }
 }

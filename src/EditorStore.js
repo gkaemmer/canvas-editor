@@ -35,12 +35,16 @@ export default class EditorStore {
   focused = true;
   firstRow = 0;
 
-  replaceRow(rowIndex, rows) {
-    Array.prototype.splice.apply(this.rows, [rowIndex, 1, ...rows]);
+  setup({ renderer }) {
+    this.renderer = renderer;
   }
 
   load(text) {
     this.rows = text.split("\n");
+  }
+
+  replaceRow(rowIndex, rows) {
+    Array.prototype.splice.apply(this.rows, [rowIndex, 1, ...rows]);
   }
 
   type(text) {
@@ -270,8 +274,19 @@ export default class EditorStore {
     }
   }
 
-  setup({ renderer }) {
-    this.renderer = renderer;
+  getSelectedText() {
+    if (!this.selection) return "";
+    if (this.selection.startY === this.selection.endY) {
+      const { startX, endX } = this.normalizedSelection;
+      return this.rows[this.selection.endY].substring(startX, endX);
+    } else {
+      const { startX, startY, endX, endY } = this.normalizedSelection;
+      let result = this.rows[startY].substring(startX) + "\n";
+      for (let i = startY + 1; i < endY; i++) {
+        result += this.rows[i] + "\n";
+      }
+      return result + this.rows[endY].substring(0, endX);
+    }
   }
 
   // Normalized selection is guaranteed to have start before/above end
