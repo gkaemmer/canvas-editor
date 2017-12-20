@@ -82,6 +82,7 @@ export default class EditorStore {
         oldContent.slice(this.cx, oldContent.length);
       this.cx--;
     }
+    this.renderer.scrollCursorIntoView();
     this.onChange();
   }
 

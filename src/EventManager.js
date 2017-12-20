@@ -48,6 +48,7 @@ export default class EventManager {
     let x = this.renderer.fromX(rawX);
     let y = this.renderer.fromY(rawY);
     this.store.handleSelectStart({ x, y: y });
+    this.input.focus();
     e.preventDefault();
   };
 
@@ -72,6 +73,25 @@ export default class EventManager {
   handleWheel = e => {
     e.preventDefault();
     this.renderer.scroll(e.deltaY);
+  };
+
+  handleFocus = () => {
+    if (!this.store.focused) {
+      this.store.focused = true;
+      this.renderer.draw();
+    }
+  };
+
+  handleBlur = () => {
+    if (this.store.focused) {
+      this.store.focused = false;
+      this.renderer.draw();
+    }
+  };
+
+  handleResize = () => {
+    this.renderer.resize();
+    this.renderer.draw();
   }
 
   setup({ store, renderer, input, canvas }) {
@@ -85,11 +105,14 @@ export default class EventManager {
 
     // Add event listeners
     window.addEventListener("keydown", this.handleKeyDown);
+    window.addEventListener("resize", this.handleResize);
 
     // Various input events
     input.addEventListener("keypress", this.handleInput);
     input.addEventListener("paste", this.handleInput);
     input.addEventListener("input", this.handleInput);
+    input.addEventListener("blur", this.handleBlur);
+    input.addEventListener("focus", this.handleFocus);
 
     // Mouse events
     canvas.addEventListener("mousedown", this.handleMouseDown);
@@ -101,5 +124,6 @@ export default class EventManager {
   teardown() {
     // Remove event listeners
     window.removeEventListener("keydown", this.handleKeyDown);
+    window.removeEventListener("resize", this.handleResize);
   }
 }

@@ -18,27 +18,9 @@ export default class Editor extends React.Component {
     this.renderer.setup({ canvas, ctx, store, input });
   }
 
-  refocus() {
-    this.input.focus();
-  }
-
-  handleFocus = () => {
-    if (!this.store.focused) {
-      this.store.focused = true;
-      this.renderer.draw();
-    }
-  };
-
-  handleBlur = () => {
-    if (this.store.focused) {
-      this.store.focused = false;
-      this.renderer.draw();
-    }
-  };
-
   render() {
     return (
-      <div onMouseUp={() => this.refocus()}>
+      <div>
         <style jsx global>{`
           body {
             margin: 0;
@@ -51,8 +33,6 @@ export default class Editor extends React.Component {
           <textarea
             style={{ position: "absolute", width: 0, height: 0 }}
             ref={input => (this.input = input)}
-            onFocus={this.handleFocus}
-            onBlur={this.handleBlur}
             autoFocus
           />
           <div style={{ position: "absolute", width: "100%", height: "100%" }}>
@@ -62,7 +42,6 @@ export default class Editor extends React.Component {
                 this.canvas = canvas;
                 this.ctx = ctx;
               }}
-              onResize={this.renderer.draw}
             />
           </div>
         </div>

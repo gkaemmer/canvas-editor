@@ -31,11 +31,9 @@ export default class Renderer {
     this.firstRow = 0;
     this.store.setup(() => this.draw());
 
-    {
-      const { width, height } = getLetterSize();
-      this.letterWidth = width;
-      this.letterHeight = height * 1.1;
-    }
+    const { width, height } = getLetterSize();
+    this.letterWidth = width;
+    this.letterHeight = height * 1.1;
 
     this.resize();
     this.draw();
@@ -43,7 +41,7 @@ export default class Renderer {
 
   resize() {
     const { height } = this.canvas.getBoundingClientRect();
-    this.visibleLines = this.fromY(height) - 1;
+    this.visibleLines = this.fromY(height - PADDING);
   }
 
   toX(x) {
@@ -195,5 +193,5 @@ export default class Renderer {
       this.scrollY += this.letterHeight;
     }
     if (scrolled) this.draw();
-  };
+  }
 }
