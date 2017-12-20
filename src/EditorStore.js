@@ -1,3 +1,10 @@
+export const directions = {
+  UP: "up",
+  DOWN: "down",
+  LEFT: "left",
+  RIGHT: "right"
+};
+
 export default class EditorStore {
   rows = [];
   cx = 0;
@@ -78,79 +85,83 @@ export default class EditorStore {
     this.onChange();
   }
 
-  moveCursor = e => {
+  moveCursor = (direction, { select, byWord, toEnd }) => {
     // Move the cursor, and optionally start/edit a selection
-    const shouldSelect = e.shiftKey;
-    const toEnd = e.metaKey; // whether to go to the end of the line (home/end)
-    if (shouldSelect && !this.selection) {
+    if (select && !this.selection) {
       this.selection = { startX: this.cx, startY: this.cy };
     }
-    if (e.code === "ArrowLeft") {
-      if (toEnd) {
-        this.cx = 0;
-      } else {
-        if (!shouldSelect && this.selection) {
-          // Move cursor to the start of selection
-          this.cx = this.normalizedSelection.startX;
-          this.cy = this.normalizedSelection.startY;
+
+    switch (direction) {
+      case directions.LEFT:
+        if (toEnd) {
+          this.cx = 0;
         } else {
-          if (this.cx === 0) {
-            if (this.cy > 0) {
-              this.cy--;
-              this.cx = this.rows[this.cy].length;
-            }
+          if (!select && this.selection) {
+            // Move cursor to the start of selection
+            this.cx = this.normalizedSelection.startX;
+            this.cy = this.normalizedSelection.startY;
           } else {
-            this.cx--;
+            if (this.cx === 0) {
+              if (this.cy > 0) {
+                this.cy--;
+                this.cx = this.rows[this.cy].length;
+              }
+            } else {
+              this.cx--;
+            }
           }
         }
-      }
-      this.prevcx = this.cx;
-    } else if (e.code === "ArrowRight") {
-      if (toEnd) {
-        this.cx = this.rows[this.cy].length;
-      } else {
-        if (!shouldSelect && this.selection) {
-          // Move cursor to the end of selection
-          this.cx = this.normalizedSelection.endX;
-          this.cy = this.normalizedSelection.endY;
+        this.prevcx = this.cx;
+        break;
+      case directions.RIGHT:
+        if (toEnd) {
+          this.cx = this.rows[this.cy].length;
         } else {
-          if (this.cx >= this.rows[this.cy].length) {
-            if (this.cy < this.rows.length - 1) {
-              this.cy++;
-              this.cx = 0;
-            }
+          if (!select && this.selection) {
+            // Move cursor to the end of selection
+            this.cx = this.normalizedSelection.endX;
+            this.cy = this.normalizedSelection.endY;
           } else {
-            this.cx++;
+            if (this.cx >= this.rows[this.cy].length) {
+              if (this.cy < this.rows.length - 1) {
+                this.cy++;
+                this.cx = 0;
+              }
+            } else {
+              this.cx++;
+            }
           }
         }
-      }
-      this.prevcx = this.cx;
-    } else if (e.code === "ArrowUp") {
-      if (toEnd) {
-        this.cy = 0;
-        this.cx = 0;
-      } else {
-        if (this.cy <= 0) this.cx = this.prevcx = 0;
-        else {
-          this.cy--;
-          this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
+        this.prevcx = this.cx;
+        break;
+      case directions.UP:
+        if (toEnd) {
+          this.cy = 0;
+          this.cx = 0;
+        } else {
+          if (this.cy <= 0) this.cx = this.prevcx = 0;
+          else {
+            this.cy--;
+            this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
+          }
         }
-      }
-    } else if (e.code === "ArrowDown") {
-      if (toEnd) {
-        this.cy = this.rows.length - 1;
-        this.cx = this.rows[this.cy].length;
-      } else {
-        if (this.cy >= this.rows.length - 1)
-          this.cx = this.prevcx = this.rows[this.cy].length;
-        else {
-          this.cy++;
-          this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
+        break;
+      case directions.DOWN:
+        if (toEnd) {
+          this.cy = this.rows.length - 1;
+          this.cx = this.rows[this.cy].length;
+        } else {
+          if (this.cy >= this.rows.length - 1)
+            this.cx = this.prevcx = this.rows[this.cy].length;
+          else {
+            this.cy++;
+            this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
+          }
         }
-      }
     }
+
     if (
-      shouldSelect &&
+      select &&
       (this.cx !== this.selection.startX || this.cy !== this.selection.startY)
     ) {
       this.selection = {
@@ -163,26 +174,6 @@ export default class EditorStore {
     }
     this.renderer.scrollCursorIntoView();
     this.onChange();
-  };
-
-  handleKeyPress = e => {
-    if (e.code === "Backspace") {
-      this.backspace();
-    } else if (
-      e.code === "ArrowRight" ||
-      e.code === "ArrowLeft" ||
-      e.code === "ArrowUp" ||
-      e.code === "ArrowDown"
-    ) {
-      this.moveCursor(e);
-    }
-  };
-
-  handleInput = e => {
-    if (e.target.value) {
-      this.type(e.target.value);
-      e.target.value = "";
-    }
   };
 
   handleSelectStart = ({ x, y }) => {
@@ -224,13 +215,11 @@ export default class EditorStore {
   };
 
   setup(onChange) {
-    window.addEventListener("keydown", this.handleKeyPress);
     this.isSetup = true;
     this.onChange = onChange;
   }
 
   teardown() {
-    window.removeEventListener("keydown", this.handleKeyPress);
   }
 
   // Normalized selection is guaranteed to have start before/above end

@@ -4,7 +4,7 @@ export default class Debug extends React.Component {
   refresh = () => {
     if (this.unmount) return;
     this.forceUpdate();
-    setTimeout(this.refresh, 200);
+    setTimeout(this.refresh, 24);
   };
 
   componentDidMount() {

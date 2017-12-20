@@ -23,7 +23,7 @@ export default class Renderer {
   scrollY = 0;
 
   static font = font;
-  setup(canvas, ctx, store, input) {
+  setup({ canvas, ctx, store, input }) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.store = store;
@@ -37,12 +37,13 @@ export default class Renderer {
       this.letterHeight = height * 1.1;
     }
 
-    {
-      const { top, left, height } = this.canvas.getBoundingClientRect();
-      this.visibleLines = Math.floor((height - 2 * PADDING) / this.letterHeight);
-      [this.canvasX, this.canvasY] = [left, top];
-    }
+    this.resize();
     this.draw();
+  }
+
+  resize() {
+    const { height } = this.canvas.getBoundingClientRect();
+    this.visibleLines = this.fromY(height) - 1;
   }
 
   toX(x) {
@@ -50,7 +51,17 @@ export default class Renderer {
   }
 
   toY(y) {
-    return PADDING + this.letterHeight * y;
+    return PADDING + this.letterHeight * (y - this.firstRow);
+  }
+
+  fromX(rawX) {
+    return Math.round(
+      (rawX - this.gutterWidth - PADDING * 2) / this.letterWidth
+    );
+  }
+
+  fromY(rawY) {
+    return Math.floor((rawY - PADDING) / this.letterHeight) + this.firstRow;
   }
 
   draw = () => {
@@ -69,7 +80,7 @@ export default class Renderer {
         const width = (end - start) * this.letterWidth;
         ctx.fillRect(
           this.toX(start) - 1,
-          this.toY(line - this.firstRow) + 0.2 * this.letterHeight,
+          this.toY(line) + 0.2 * this.letterHeight,
           width + 2,
           this.letterHeight
         );
@@ -92,13 +103,16 @@ export default class Renderer {
       }
     }
 
-    for (let line = this.firstRow - 1; line <= this.firstRow + this.visibleLines + 1; line++) {
-      if (line < 0) continue;
-      if (line >= this.store.rows.length) break;
-      const i = line - this.firstRow;
-      const row = this.store.rows[line];
+    for (
+      let i = this.firstRow - 1;
+      i <= this.firstRow + this.visibleLines + 1;
+      i++
+    ) {
+      if (i < 0) continue;
+      if (i >= this.store.rows.length) break;
+      const row = this.store.rows[i];
       const rowy = this.toY(i) + this.letterHeight;
-      const rowNumber = (line + 1).toString();
+      const rowNumber = (i + 1).toString();
       ctx.font = font;
 
       // Line number
@@ -145,7 +159,7 @@ export default class Renderer {
       ctx.fillStyle = "#ddd";
       ctx.fillRect(
         this.toX(this.store.cx) - 1,
-        this.toY(0.2 + this.store.cy - this.firstRow),
+        this.toY(0.2 + this.store.cy),
         2,
         this.letterHeight
       );
@@ -160,62 +174,26 @@ export default class Renderer {
     // Adjust visible region depending on cursor position
     if (this.store.cy > this.firstRow + this.visibleLines - 1)
       this.firstRow = this.store.cy - this.visibleLines + 1;
-    if (this.store.cy < this.firstRow)
-      this.firstRow = this.store.cy;
+    if (this.store.cy < this.firstRow) this.firstRow = this.store.cy;
   }
 
-  handleMouseDown = e => {
-    this.isMouseDown = true;
-    let rawX = e.clientX - this.canvasX;
-    let rawY = e.clientY - this.canvasY;
-    let x = Math.round(
-      (rawX - PADDING * 2 - this.gutterWidth) / this.letterWidth
-    );
-    let y = Math.floor((rawY - PADDING) / this.letterHeight);
-    this.store.handleSelectStart({ x, y: y + this.firstRow });
-    e.preventDefault();
-  };
-
-  handleMouseUp = e => {
-    this.isMouseDown = false;
-    let rawX = e.clientX - this.canvasX;
-    let rawY = e.clientY - this.canvasY;
-    let x = Math.round(
-      (rawX - PADDING * 2 - this.gutterWidth) / this.letterWidth
-    );
-    let y = Math.floor((rawY - PADDING) / this.letterHeight);
-    this.store.handleSelectEnd({ x, y: y + this.firstRow });
-  };
-
-  handleMouseMove = e => {
-    if (!this.isMouseDown) return;
-    let rawX = e.clientX - this.canvasX;
-    let rawY = e.clientY - this.canvasY;
-    let x = Math.round(
-      (rawX - PADDING * 2 - this.gutterWidth) / this.letterWidth
-    );
-    let y = Math.floor((rawY - PADDING) / this.letterHeight);
-    this.store.handleSelectMove({ x, y: y + this.firstRow });
-  };
-
-  handleScroll = e => {
-    e.preventDefault();
-    this.scrollY += e.deltaY;
+  scroll(amount) {
+    this.scrollY += amount;
     let scrolled = false;
-    while (this.scrollY > 10) {
+    while (this.scrollY > this.letterHeight) {
       if (this.firstRow < this.store.rows.length - this.visibleLines) {
         this.firstRow++;
         scrolled = true;
       }
-      this.scrollY -= 10;
+      this.scrollY -= this.letterHeight;
     }
-    while (this.scrollY < -10) {
+    while (this.scrollY < -this.letterHeight) {
       if (this.firstRow > 0) {
         this.firstRow--;
         scrolled = true;
       }
-      this.scrollY += 10;
+      this.scrollY += this.letterHeight;
     }
     if (scrolled) this.draw();
-  }
+  };
 }
