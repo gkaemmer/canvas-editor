@@ -46,7 +46,7 @@ export default class EditorStore {
     }
     this.prevcx = this.cx;
     this.renderer.scrollCursorIntoView();
-    this.onChange();
+    this.renderer.draw();
   }
 
   deleteSelection() {
@@ -83,7 +83,7 @@ export default class EditorStore {
       this.cx--;
     }
     this.renderer.scrollCursorIntoView();
-    this.onChange();
+    this.renderer.draw();
   }
 
   moveCursor = (direction, { select, byWord, toEnd }) => {
@@ -174,7 +174,7 @@ export default class EditorStore {
       this.selection = null;
     }
     this.renderer.scrollCursorIntoView();
-    this.onChange();
+    this.renderer.drawQuick();
   };
 
   handleSelectStart = ({ x, y }) => {
@@ -201,7 +201,7 @@ export default class EditorStore {
       endY: y
     };
     this.renderer.scrollCursorIntoView();
-    this.onChange();
+    this.renderer.drawQuick();
   };
 
   handleSelectEnd = ({ x, y }) => {
@@ -212,12 +212,11 @@ export default class EditorStore {
     }
     this.cx = x;
     this.cy = y;
-    this.onChange();
+    this.renderer.drawQuick();
   };
 
-  setup(onChange) {
+  setup() {
     this.isSetup = true;
-    this.onChange = onChange;
   }
 
   // Normalized selection is guaranteed to have start before/above end

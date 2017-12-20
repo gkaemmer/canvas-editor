@@ -1,5 +1,4 @@
 import React from "react";
-import BigCanvas from "./BigCanvas";
 import EditorStore from "./EditorStore";
 import EditorRenderer from "./EditorRenderer";
 import EventManager from "./EventManager";
@@ -13,9 +12,9 @@ export default class Editor extends React.Component {
 
   componentDidMount() {
     this.store.load(defaultText);
-    const { renderer, store, canvas, input, ctx } = this;
+    const { renderer, store, canvas, input } = this;
     this.eventManager.setup({ renderer, store, canvas, input });
-    this.renderer.setup({ canvas, ctx, store, input });
+    this.renderer.setup({ canvas, store, input });
   }
 
   render() {
@@ -36,11 +35,10 @@ export default class Editor extends React.Component {
             autoFocus
           />
           <div style={{ position: "absolute", width: "100%", height: "100%" }}>
-            <BigCanvas
-              style={{ cursor: "text" }}
-              innerRef={(canvas, ctx) => {
+            <canvas
+              style={{ cursor: "text", width: "100%", height: "100%" }}
+              ref={canvas => {
                 this.canvas = canvas;
-                this.ctx = ctx;
               }}
             />
           </div>

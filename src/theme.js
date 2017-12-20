@@ -21,7 +21,6 @@ const italics = [];
 const styles = {};
 
 for (let [elements, color] of colors) {
-  console.log(elements, color);
   for (let element of elements) {
     styles[element] = [color];
   }

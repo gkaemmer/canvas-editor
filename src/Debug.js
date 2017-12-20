@@ -4,7 +4,7 @@ export default class Debug extends React.Component {
   refresh = () => {
     if (this.unmount) return;
     this.forceUpdate();
-    setTimeout(this.refresh, 24);
+    setTimeout(this.refresh, 30);
   };
 
   componentDidMount() {
@@ -24,6 +24,8 @@ export default class Debug extends React.Component {
       >
         Draw took {this.props.renderer.drawTime}ms<br />
         First row: {this.props.renderer.firstRow}
+        <br />
+        ScrollY: {this.props.renderer.scrollY}
         <br />
         Visible lines: {this.props.renderer.visibleLines}
         <br />

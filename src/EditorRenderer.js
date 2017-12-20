@@ -5,6 +5,8 @@ import Prism from "prismjs";
 const PADDING = 10;
 const font = "13px Menlo, monospace";
 
+let pixelRatio = 1;
+
 function getLetterSize() {
   const el = document.createElement("div");
   el.style.font = font;
@@ -22,27 +24,36 @@ function createLayer(otherCanvas, otherCtx) {
   canvas.width = otherCanvas.width;
   canvas.height = otherCanvas.height;
   const ctx = canvas.getContext("2d");
-  const scale = canvas.width / canvas.innerWidth;
-  ctx.scale(2, 2);
-  console.log(ctx);
   return { canvas, ctx };
+}
+
+function initPixelRatio(ctx) {
+  const backingStoreRatio =
+    ctx.webkitBackingStorePixelRatio ||
+    ctx.mozBackingStorePixelRatio ||
+    ctx.msBackingStorePixelRatio ||
+    ctx.oBackingStorePixelRatio ||
+    ctx.backingStorePixelRatio ||
+    1;
+  pixelRatio = window.devicePixelRatio / backingStoreRatio;
 }
 
 // Handles rendering of the canvas, and responding to display-specific mouse
 // events
-export default class Renderer {
+export default class EditorRenderer {
   scrollY = 0;
 
   static font = font;
-  setup({ canvas, ctx, store, input }) {
+  setup({ canvas, store, input }) {
     this.canvas = canvas;
-    this.ctx = ctx;
+    this.ctx = canvas.getContext("2d");
+    initPixelRatio(this.ctx);
     this.store = store;
     this.input = input;
     this.firstRow = 0;
-    this.textLayer = createLayer(canvas, ctx);
-    this.cursorLayer = createLayer(canvas, ctx);
-    this.store.setup(() => this.draw());
+    this.textLayer = createLayer(canvas, this.ctx);
+    this.bgLayer = createLayer(canvas, this.ctx);
+    this.store.setup();
 
     const { width, height } = getLetterSize();
     this.letterWidth = width;
@@ -52,17 +63,12 @@ export default class Renderer {
     this.draw();
   }
 
-  resize() {
-    const { height } = this.canvas.getBoundingClientRect();
-    this.visibleLines = this.fromY(height - PADDING);
-  }
-
   toX(x) {
     return PADDING * 2 + this.gutterWidth + this.letterWidth * x;
   }
 
   toY(y) {
-    return PADDING + this.letterHeight * (y - this.firstRow);
+    return PADDING - this.scrollY + this.letterHeight * (y - this.firstRow);
   }
 
   fromX(rawX) {
@@ -72,20 +78,19 @@ export default class Renderer {
   }
 
   fromY(rawY) {
-    return Math.floor((rawY - PADDING) / this.letterHeight) + this.firstRow;
+    return (
+      Math.floor((rawY + this.scrollY - PADDING) / this.letterHeight) +
+      this.firstRow
+    );
   }
 
-  draw = () => {
-    const start = new Date().getTime();
-    let ctx = this.textLayer.ctx;
-    ctx.fillStyle = theme.background;
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  drawBackground() {
+    this.bgLayer.ctx.fillStyle = theme.background;
+    this.bgLayer.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
 
-    this.gutterWidth =
-      Math.max(2, Math.floor(Math.log10(this.store.rows.length)) + 1) *
-      this.letterWidth;
-
-    // Selection
+  drawSelection() {
+    const ctx = this.bgLayer.ctx;
     if (this.store.selection) {
       const drawSelection = (line, start, end) => {
         const width = (end - start) * this.letterWidth;
@@ -113,7 +118,27 @@ export default class Renderer {
         drawSelection(endY, 0, endX);
       }
     }
+  }
 
+  drawCursor() {
+    const ctx = this.ctx;
+    if (this.store.focused) {
+      // Draw cursor
+      ctx.fillStyle = "#ddd";
+      ctx.fillRect(
+        this.toX(this.store.cx) - 1,
+        this.toY(0.2 + this.store.cy),
+        2,
+        this.letterHeight
+      );
+      this.input.style.left = this.toX(this.store.cx) + "px";
+      this.input.style.top = this.toY(0.2 + this.store.cy) + "px";
+    }
+  }
+
+  drawText() {
+    const ctx = this.textLayer.ctx;
+    ctx.clearRect(0, 0, this.width, this.height);
     for (
       let i = this.firstRow - 1;
       i <= this.firstRow + this.visibleLines + 1;
@@ -142,9 +167,9 @@ export default class Renderer {
 
       let x = this.toX(0);
       let y = rowy;
-      function drawText(text) {
+      const drawText = (text) => {
         ctx.fillText(text, x, y);
-        x += ctx.measureText(text).width;
+        x += text.length * this.letterWidth;
       }
       for (let token of tokens) {
         if (typeof token === "string") {
@@ -164,41 +189,64 @@ export default class Renderer {
         }
       }
     }
+  }
 
-    this.ctx.save();
-    this.ctx.scale(0.5, 0.5);
-    this.ctx.drawImage(this.textLayer.canvas, 0, -2 * this.scrollY);
-    this.ctx.restore();
+  drawLayer(layer) {
+    this.ctx.drawImage(layer.canvas, 0, 0, this.width, this.height);
+  }
 
-    ctx = this.ctx;
-    if (this.store.focused) {
-      // Draw cursor
-      ctx.fillStyle = "#ddd";
-      ctx.fillRect(
-        this.toX(this.store.cx) - 1,
-        this.toY(0.2 + this.store.cy) - this.scrollY,
-        2,
-        this.letterHeight
-      );
-      this.input.style.left = this.toX(this.store.cx) + "px";
-      this.input.style.top = this.toY(0.2 + this.store.cy) + "px";
-    }
+  drawQuick = () => {
+    const start = new Date().getTime();
+    this.drawBackground();
+    this.drawSelection();
+    this.drawLayer(this.bgLayer);
+    this.drawLayer(this.textLayer);
+    this.drawCursor();
+    this.drawTime = new Date().getTime() - start;
+  };
 
+  draw = () => {
+    // Recalculate gutter width
+    this.gutterWidth =
+      Math.max(2, Math.floor(Math.log10(this.store.rows.length)) + 1) *
+      this.letterWidth;
+
+    const start = new Date().getTime();
+    this.drawBackground();
+    this.drawSelection();
+    this.drawText();
+    this.drawLayer(this.bgLayer);
+    this.drawLayer(this.textLayer);
+    this.drawCursor();
     this.drawTime = new Date().getTime() - start;
   };
 
   scrollCursorIntoView() {
     // Adjust visible region depending on cursor position
-    if (this.store.cy > this.firstRow + this.visibleLines - 1)
+    let scrolled = false;
+    if (this.store.cy > this.firstRow + this.visibleLines - 1) {
       this.firstRow = this.store.cy - this.visibleLines + 1;
-    if (this.store.cy < this.firstRow) this.firstRow = this.store.cy;
+      scrolled = true;
+    }
+    if (this.store.cy < this.firstRow) {
+      this.firstRow = this.store.cy;
+      scrolled = true;
+    }
+    if (scrolled) {
+      this.scrollY = 0;
+      this.draw();
+    }
   }
 
   scroll(amount) {
     this.scrollY += amount;
-    if ((this.firstRow <= 0 && this.scrollY < 0 ||
-      (this.firstRow >= this.store.rows.length - this.visibleLines) && this.scrollY > 0))
+    if (
+      (this.firstRow <= 0 && this.scrollY < 0) ||
+      (this.firstRow >= this.store.rows.length - this.visibleLines &&
+        this.scrollY > 0)
+    ) {
       this.scrollY = 0;
+    }
     let scrolled = false;
     while (this.scrollY > this.letterHeight) {
       if (this.firstRow < this.store.rows.length - this.visibleLines) {
@@ -219,5 +267,18 @@ export default class Renderer {
       }
     }
     this.draw();
+  }
+
+  resize() {
+    const { width, height } = this.canvas.getBoundingClientRect();
+    [this.width, this.height] = [width, height];
+    this.canvas.width = this.textLayer.canvas.width = this.bgLayer.canvas.width =
+      width * pixelRatio;
+    this.canvas.height = this.textLayer.canvas.height = this.bgLayer.canvas.height =
+      height * pixelRatio;
+    this.ctx.scale(pixelRatio, pixelRatio);
+    this.textLayer.ctx.scale(pixelRatio, pixelRatio);
+    this.bgLayer.ctx.scale(pixelRatio, pixelRatio);
+    this.visibleLines = this.fromY(height - PADDING);
   }
 }
