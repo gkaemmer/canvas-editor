@@ -1,4 +1,4 @@
-import Editor from "../src/Editor";
+import EditorView from "../src/EditorView";
 
 export default class Index extends React.Component {
   componentDidMount() {
@@ -8,6 +8,6 @@ export default class Index extends React.Component {
 
   render() {
     if (!this.ready) return null;
-    return <Editor />;
+    return <EditorView />;
   }
 }

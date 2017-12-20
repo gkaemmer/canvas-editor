@@ -16,18 +16,19 @@ export default class Debug extends React.Component {
   }
 
   render() {
-    if (!this.props.store.isSetup) return null;
-    const { selection } = this.props.store;
+    if (!this.props.editor.isSetup) return null;
+    const { selection } = this.props.editor.store;
+    const { drawTime, firstRow, scrollY, visibleLines } = this.props.editor.renderer;
     return (
       <div
         style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 200 }}
       >
-        Draw took {this.props.renderer.drawTime}ms<br />
-        First row: {this.props.renderer.firstRow}
+        Draw took {drawTime}ms<br />
+        First row: {firstRow}
         <br />
-        ScrollY: {this.props.renderer.scrollY}
+        ScrollY: {scrollY}
         <br />
-        Visible lines: {this.props.renderer.visibleLines}
+        Visible lines: {visibleLines}
         <br />
         {selection && (
           <div>

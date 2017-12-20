@@ -43,10 +43,6 @@ export default class EditorStore {
   focused = true;
   firstRow = 0;
 
-  constructor(renderer) {
-    this.renderer = renderer;
-  }
-
   replaceRow(rowIndex, rows) {
     Array.prototype.splice.apply(this.rows, [rowIndex, 1, ...rows]);
   }
@@ -262,8 +258,8 @@ export default class EditorStore {
     }
   }
 
-  setup() {
-    this.isSetup = true;
+  setup({ renderer }) {
+    this.renderer = renderer;
   }
 
   // Normalized selection is guaranteed to have start before/above end

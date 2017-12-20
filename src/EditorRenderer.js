@@ -53,7 +53,6 @@ export default class EditorRenderer {
     this.firstRow = 0;
     this.textLayer = createLayer(canvas, this.ctx);
     this.bgLayer = createLayer(canvas, this.ctx);
-    this.store.setup();
 
     const { width, height } = getLetterSize();
     this.letterWidth = width;
@@ -61,6 +60,9 @@ export default class EditorRenderer {
 
     this.resize();
     this.draw();
+
+    this.cursorBlink = 0;
+    window.requestAnimationFrame(this.blinkCursor);
   }
 
   toX(x) {
@@ -124,7 +126,8 @@ export default class EditorRenderer {
     const ctx = this.ctx;
     if (this.store.focused) {
       // Draw cursor
-      ctx.fillStyle = "#ddd";
+      const cursorOpacity = this.showCursor ? 1 : 0;
+      ctx.fillStyle = "rgba(221, 221, 221, " + cursorOpacity + ")";
       ctx.fillRect(
         this.toX(this.store.cx) - 1,
         this.toY(0.2 + this.store.cy),
@@ -167,7 +170,7 @@ export default class EditorRenderer {
 
       let x = this.toX(0);
       let y = rowy;
-      const drawToken = (token) => {
+      const drawToken = token => {
         if (Array.isArray(token)) {
           token.forEach(inner => drawToken(inner));
         } else if (typeof token === "object") {
@@ -186,7 +189,7 @@ export default class EditorRenderer {
           ctx.fillText(token, x, y);
           x += token.length * this.letterWidth;
         }
-      }
+      };
       tokens.forEach(drawToken);
     }
   }
@@ -224,6 +227,7 @@ export default class EditorRenderer {
   scrollCursorIntoView() {
     // Adjust visible region depending on cursor position
     let scrolled = false;
+    this.cursorBlink = 0;
     if (this.store.cy > this.firstRow + this.visibleLines - 1) {
       this.firstRow = this.store.cy - this.visibleLines + 1;
       scrolled = true;
@@ -280,5 +284,19 @@ export default class EditorRenderer {
     this.textLayer.ctx.scale(pixelRatio, pixelRatio);
     this.bgLayer.ctx.scale(pixelRatio, pixelRatio);
     this.visibleLines = this.fromY(height - PADDING) - this.firstRow;
+  }
+
+  get showCursor() {
+    return this.cursorBlink < 50;
+  }
+
+  blinkCursor = () => {
+    const showCursorWas = this.showCursor;
+    this.cursorBlink += 1.5;
+
+    if (this.cursorBlink > 100) this.cursorBlink = 0;
+    if (this.showCursor !== showCursorWas) this.drawQuick();
+
+    window.requestAnimationFrame(this.blinkCursor);
   }
 }

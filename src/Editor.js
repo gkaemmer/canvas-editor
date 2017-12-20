@@ -1,49 +1,48 @@
-import React from "react";
-import EditorStore from "./EditorStore";
 import EditorRenderer from "./EditorRenderer";
+import EditorStore from "./EditorStore";
 import EventManager from "./EventManager";
-import Debug from "./Debug";
-import defaultText from "./default";
 
-export default class Editor extends React.Component {
+export default class Editor {
   renderer = new EditorRenderer();
-  store = new EditorStore(this.renderer);
+  store = new EditorStore();
   eventManager = new EventManager();
 
-  componentDidMount() {
-    this.store.load(defaultText);
-    const { renderer, store, canvas, input } = this;
-    this.eventManager.setup({ renderer, store, canvas, input });
-    this.renderer.setup({ canvas, store, input });
+  setup(container) {
+    this.container = container;
+    this.buildElements();
+
+    setTimeout(() => {
+      const { renderer, store, canvas, input } = this;
+      this.eventManager.setup({ renderer, store, canvas, input });
+      this.renderer.setup({ store, canvas, input });
+      this.store.setup({ renderer });
+
+      this.isSetup = true;
+    });
   }
 
-  render() {
-    return (
-      <div>
-        <style jsx global>{`
-          body {
-            margin: 0;
-          }
-        `}</style>
-        <Debug renderer={this.renderer} store={this.store} />
-        <div
-          style={{ position: "fixed", top: 0, left: 200, bottom: 0, right: 0 }}
-        >
-          <textarea
-            style={{ position: "absolute", width: 0, height: 0 }}
-            ref={input => (this.input = input)}
-            autoFocus
-          />
-          <div style={{ position: "absolute", width: "100%", height: "100%" }}>
-            <canvas
-              style={{ cursor: "text", width: "100%", height: "100%" }}
-              ref={canvas => {
-                this.canvas = canvas;
-              }}
-            />
-          </div>
-        </div>
-      </div>
-    );
+  load(text) {
+    this.store.load(text);
+  }
+
+  buildElements() {
+    this.canvas = document.createElement("canvas");
+    Object.assign(this.canvas.style, {
+      width: "100%",
+      height: "100%",
+      position: "absolute",
+      zIndex: 1
+    });
+    this.container.appendChild(this.canvas);
+
+    this.input = document.createElement("textarea");
+    Object.assign(this.input.style, {
+      width: "0",
+      height: "0",
+      top: 10,
+      left: 10,
+      position: "absolute"
+    });
+    this.container.appendChild(this.input);
   }
 }
