@@ -168,8 +168,15 @@ export default class EditorRenderer {
       let x = this.toX(0);
       let y = rowy;
       const drawText = (text) => {
-        ctx.fillText(text, x, y);
-        x += text.length * this.letterWidth;
+        if (Array.isArray(text)) {
+          for (let innerText of text) {
+            // This might not work, TODO
+            drawText(innerText);
+          }
+        } else {
+          ctx.fillText(text, x, y);
+          x += text.length * this.letterWidth;
+        }
       }
       for (let token of tokens) {
         if (typeof token === "string") {

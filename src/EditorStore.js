@@ -116,8 +116,6 @@ export default class EditorStore {
   }
 
   moveCursor(direction, { select, byWord, toEnd, x, y }) {
-
-    console.log("Moving cursor", arguments);
     // Move the cursor, and optionally start/edit a selection
     let newSelection;
     if (select && !this.selection) {
@@ -220,9 +218,9 @@ export default class EditorStore {
   };
 
   selectWord() {
-    const endX = this.nextWordEnd(this.rows[this.cy], this.cx);
+    const endX = nextWordEnd(this.rows[this.cy], this.cx);
     this.setSelectionIfNeeded({
-      startX: this.prevWordStart(this.rows[this.cy], this.cx),
+      startX: prevWordStart(this.rows[this.cy], this.cx),
       startY: this.cy,
       endX,
       endY: this.cy
