@@ -54,7 +54,6 @@ export default class EditorRenderer {
 
     this.cursorBlink = 0;
     this.resize();
-    this.initCache();
 
     this.draw();
 
@@ -135,50 +134,6 @@ export default class EditorRenderer {
     }
   }
 
-  drawText() {
-    const { ctx, canvas } = this.textLayer;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
-    ctx.translate(0, this.letterHeight);
-    for (
-      let i = this.firstRow - 2;
-      i <= this.firstRow + this.visibleLines + 2;
-      i++
-    ) {
-      if (i < 0) continue;
-      if (i >= this.store.rows.length) break;
-
-      const row = this.store.rows[i];
-      const rowy = this.toY(i) + this.scrollY + this.letterHeight;
-      const rowNumber = (i + 1).toString();
-      console.log(i, rowNumber);
-
-      // Line number
-      ctx.font = font;
-      ctx.fillStyle = "#777";
-      ctx.fillText(
-        rowNumber,
-        PADDING + this.gutterWidth - this.letterWidth * rowNumber.length,
-        rowy
-      );
-
-      this.drawLine(ctx, row, this.toX(0), rowy);
-
-      // if (!this.lineCache.has(row)) {
-      //   this.cacheLine(row);
-      // }
-
-      // this.drawLineFromCache(row, this.toX(0), this.toY(i));
-    }
-    ctx.restore();
-  }
-
-  drawTextLayer() {
-    const { width, height } = this.textLayer.canvas;
-    this.ctx.drawImage(this.textLayer.canvas, 0, 0, width, height,
-      0, -this.letterHeight - this.scrollY, width / pixelRatio, height / pixelRatio);
-  }
-
   drawLine(ctx, line, x, y) {
     ctx.fillStyle = "#ddd";
     ctx.font = font;
@@ -211,16 +166,48 @@ export default class EditorRenderer {
     tokens.forEach(drawToken);
   }
 
-  drawLayer(layer, offsetX = 0, offsetY = 0) {
-    this.ctx.drawImage(layer.canvas, 0, 0, this.width*pixelRatio, this.height*pixelRatio,
-      offsetX, offsetY, this.width, this.height);
+  drawText() {
+    const { ctx, canvas } = this.textLayer;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(0, this.letterHeight);
+    for (
+      let i = this.firstRow - 2;
+      i <= this.firstRow + this.visibleLines + 2;
+      i++
+    ) {
+      if (i < 0) continue;
+      if (i >= this.store.rows.length) break;
+
+      const row = this.store.rows[i];
+      const rowy = this.toY(i) + this.scrollY + this.letterHeight;
+      const rowNumber = (i + 1).toString();
+
+      // Line number
+      ctx.font = font;
+      ctx.fillStyle = "#777";
+      ctx.fillText(
+        rowNumber,
+        PADDING + this.gutterWidth - this.letterWidth * rowNumber.length,
+        rowy
+      );
+
+      this.drawLine(ctx, row, this.toX(0), rowy);
+    }
+    ctx.restore();
+  }
+
+  drawTextLayer() {
+    const { width, height } = this.textLayer.canvas;
+    this.ctx.drawImage(this.textLayer.canvas, 0, 0, width, height,
+      0, -this.letterHeight - this.scrollY, width / pixelRatio, height / pixelRatio);
   }
 
   drawQuick = () => {
     const start = new Date().getTime();
     this.drawBackground();
     this.drawSelection();
-    this.drawLayer(this.bgLayer);
+    this.ctx.drawImage(this.bgLayer.canvas, 0, 0, this.width, this.height);
     this.drawTextLayer();
     this.drawCursor();
     this.drawTime = new Date().getTime() - start;
@@ -236,7 +223,7 @@ export default class EditorRenderer {
     this.drawBackground();
     this.drawSelection();
     this.drawText();
-    this.drawLayer(this.bgLayer);
+    this.ctx.drawImage(this.bgLayer.canvas, 0, 0, this.width, this.height);
     this.drawTextLayer();
     this.drawCursor();
     this.drawTime = new Date().getTime() - start;
@@ -333,60 +320,5 @@ export default class EditorRenderer {
       layer.ctx.scale(pixelRatio, pixelRatio);
     });
     this.visibleLines = this.fromY(height - PADDING) - this.firstRow;
-  }
-
-  // Lines cache to improve rendering speed (especially while scrolling)
-
-  lineCache = new Map();
-  // FIFO
-  lineCachePosition = 0;
-  lineCacheSize = 50;
-  lineCacheKeys = new Array(this.lineCacheSize);
-
-  initCache() {
-    this.lineCacheLayer = {
-      canvas: document.createElement("canvas"),
-    };
-    this.lineCacheLayer.ctx = this.lineCacheLayer.canvas.getContext("2d");
-    this.lineCacheLayer.canvas.width = window.innerWidth * pixelRatio;
-    this.lineCacheLayer.canvas.height = this.lineCacheSize * this.cacheLineHeight * pixelRatio;
-    this.lineCacheLayer.ctx.scale(pixelRatio, pixelRatio);
-  }
-
-  get cacheLineHeight() {
-    return this.letterHeight * 1.2;
-  }
-
-  cacheLine(line) {
-    this.lineCachePosition++;
-    if (this.lineCachePosition > this.lineCacheSize) {
-      this.lineCachePosition = 0;
-    }
-    if (this.lineCacheKeys[this.lineCachePosition]) {
-      console.log("Overwriting cache for ", line);
-      this.lineCache.clear(this.lineCacheKeys[this.lineCachePosition]);
-    }
-    const cacheY = this.lineCachePosition * this.cacheLineHeight;
-    this.lineCacheLayer.ctx.clearRect(0, cacheY, this.width, this.cacheLineHeight);
-    this.drawLine(this.lineCacheLayer.ctx, line, 0, cacheY + this.letterHeight);
-    this.lineCacheKeys[this.lineCachePosition] = line;
-    this.lineCache.set(line, { cacheY });
-  }
-
-  drawLineFromCache(line, x, y) {
-    const cached = this.lineCache.get(line);
-    if (!cached) throw new Error("Line not found in cache");
-    this.textLayer.ctx.clearRect(x, y + 3, this.width, this.cacheLineHeight - 3);
-    this.textLayer.ctx.drawImage(
-      this.lineCacheLayer.canvas,
-      0,
-      cached.cacheY*pixelRatio,
-      this.width*pixelRatio,
-      this.cacheLineHeight*pixelRatio,
-      x,
-      y,
-      this.width,
-      this.cacheLineHeight
-    );
   }
 }
