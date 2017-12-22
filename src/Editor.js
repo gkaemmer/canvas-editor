@@ -18,7 +18,7 @@ export default class Editor {
       this.store.setup({ renderer });
 
       this.isSetup = true;
-    });
+    }, 20);
   }
 
   load(text) {

@@ -53,7 +53,6 @@ export default class EventManager {
       this.copyToClipboard(this.store.getSelectedText());
       this.store.backspace();
     }
-
   };
 
   handleInput = e => {
@@ -104,13 +103,22 @@ export default class EventManager {
   };
 
   handleMouseMove = e => {
-    if (!this.isMouseDown) return;
-    // Dragging
     let rawX = e.clientX - this.canvasX;
     let rawY = e.clientY - this.canvasY;
     let x = this.renderer.fromX(rawX);
     let y = this.renderer.fromY(rawY);
-    this.store.moveCursor(directions.ABSOLUTE, { select: true, x, y });
+
+    if (this.isMouseDown) {
+      // Dragging
+      this.store.moveCursor(directions.ABSOLUTE, { select: true, x, y });
+      this.setCursor("text")
+    } else {
+      // Manage
+      if (rawX > this.renderer.gutterWidth + 20)
+        this.setCursor("text")
+      else
+        this.setCursor("default");
+    }
   };
 
   handleWheel = e => {
@@ -190,5 +198,12 @@ export default class EventManager {
     document.execCommand("copy");
     document.body.removeChild(input);
     this.input.focus();
+  }
+
+  setCursor(cursor) {
+    if (this.cursorStyle !== cursor) {
+      this.cursorStyle = cursor;
+      this.canvas.style.cursor = cursor;
+    }
   }
 }

@@ -2,7 +2,7 @@ import EditorStore from "./EditorStore";
 import theme from "./theme";
 import Prism from "prismjs";
 
-const PADDING = 10;
+const PADDING = 5;
 const font = "13px Menlo, monospace";
 
 let pixelRatio = 1;
@@ -17,14 +17,6 @@ function getLetterSize() {
   const { width, height } = el.getBoundingClientRect();
   document.body.removeChild(el);
   return { width, height };
-}
-
-function createLayer(otherCanvas, otherCtx) {
-  const canvas = document.createElement("canvas");
-  canvas.width = otherCanvas.width;
-  canvas.height = otherCanvas.height;
-  const ctx = canvas.getContext("2d");
-  return { canvas, ctx };
 }
 
 function initPixelRatio(ctx) {
@@ -42,31 +34,35 @@ function initPixelRatio(ctx) {
 // events
 export default class EditorRenderer {
   scrollY = 0;
+  layers = [];
 
   static font = font;
   setup({ canvas, store, input }) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
     initPixelRatio(this.ctx);
-    this.store = store;
-    this.input = input;
-    this.firstRow = 0;
-    this.textLayer = createLayer(canvas, this.ctx);
-    this.bgLayer = createLayer(canvas, this.ctx);
-
     const { width, height } = getLetterSize();
     this.letterWidth = width;
     this.letterHeight = height * 1.1;
+    this.store = store;
+    this.input = input;
+    this.firstRow = 0;
 
-    this.resize();
-    this.draw();
+    // Layers
+    this.textLayer = this.createLayer(0, this.letterHeight * 2);
+    this.bgLayer = this.createLayer();
 
     this.cursorBlink = 0;
+    this.resize();
+    this.initCache();
+
+    this.draw();
+
     window.requestAnimationFrame(this.blinkCursor);
   }
 
   toX(x) {
-    return PADDING * 2 + this.gutterWidth + this.letterWidth * x;
+    return PADDING + this.letterWidth + this.gutterWidth + this.letterWidth * x;
   }
 
   toY(y) {
@@ -75,7 +71,7 @@ export default class EditorRenderer {
 
   fromX(rawX) {
     return Math.round(
-      (rawX - this.gutterWidth - PADDING * 2) / this.letterWidth
+      (rawX - this.gutterWidth - this.letterWidth - PADDING) / this.letterWidth
     );
   }
 
@@ -140,21 +136,25 @@ export default class EditorRenderer {
   }
 
   drawText() {
-    const ctx = this.textLayer.ctx;
-    ctx.clearRect(0, 0, this.width, this.height);
+    const { ctx, canvas } = this.textLayer;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(0, this.letterHeight);
     for (
-      let i = this.firstRow - 1;
-      i <= this.firstRow + this.visibleLines + 1;
+      let i = this.firstRow - 2;
+      i <= this.firstRow + this.visibleLines + 2;
       i++
     ) {
       if (i < 0) continue;
       if (i >= this.store.rows.length) break;
+
       const row = this.store.rows[i];
-      const rowy = this.toY(i) + this.letterHeight;
+      const rowy = this.toY(i) + this.scrollY + this.letterHeight;
       const rowNumber = (i + 1).toString();
-      ctx.font = font;
+      console.log(i, rowNumber);
 
       // Line number
+      ctx.font = font;
       ctx.fillStyle = "#777";
       ctx.fillText(
         rowNumber,
@@ -162,40 +162,58 @@ export default class EditorRenderer {
         rowy
       );
 
-      // Syntax highlighted row
-      // TODO: this breaks when syntax trees span multiple lines
-      ctx.fillStyle = "#ddd";
-      const tokens = Prism.tokenize(row, Prism.languages.js);
-      if (!tokens) continue;
+      this.drawLine(ctx, row, this.toX(0), rowy);
 
-      let x = this.toX(0);
-      let y = rowy;
-      const drawToken = token => {
-        if (Array.isArray(token)) {
-          token.forEach(inner => drawToken(inner));
-        } else if (typeof token === "object") {
-          let oldFillStyle = ctx.fillStyle;
-          let oldFont = ctx.font;
-          const elementTypes = [token.type];
-          if (token.alias) elementTypes.push(token.alias);
-          const [color, bold, italic] = theme.text(elementTypes);
-          if (bold) ctx.font = "bold " + ctx.font;
-          if (italic) ctx.font = "italic " + ctx.font;
-          ctx.fillStyle = color;
-          drawToken(token.content);
-          ctx.fillStyle = oldFillStyle;
-          ctx.font = oldFont;
-        } else if (typeof token === "string") {
-          ctx.fillText(token, x, y);
-          x += token.length * this.letterWidth;
-        }
-      };
-      tokens.forEach(drawToken);
+      // if (!this.lineCache.has(row)) {
+      //   this.cacheLine(row);
+      // }
+
+      // this.drawLineFromCache(row, this.toX(0), this.toY(i));
     }
+    ctx.restore();
   }
 
-  drawLayer(layer) {
-    this.ctx.drawImage(layer.canvas, 0, 0, this.width, this.height);
+  drawTextLayer() {
+    const { width, height } = this.textLayer.canvas;
+    this.ctx.drawImage(this.textLayer.canvas, 0, 0, width, height,
+      0, -this.letterHeight - this.scrollY, width / pixelRatio, height / pixelRatio);
+  }
+
+  drawLine(ctx, line, x, y) {
+    ctx.fillStyle = "#ddd";
+    ctx.font = font;
+
+    // Syntax highlighted row
+    // TODO: this breaks when syntax trees span multiple lines
+    const tokens = Prism.tokenize(line, Prism.languages.js);
+    if (!tokens) return;
+
+    const drawToken = token => {
+      if (Array.isArray(token)) {
+        token.forEach(inner => drawToken(inner));
+      } else if (typeof token === "object") {
+        let oldFillStyle = ctx.fillStyle;
+        let oldFont = ctx.font;
+        const elementTypes = [token.type];
+        if (token.alias) elementTypes.push(token.alias);
+        const [color, bold, italic] = theme.text(elementTypes);
+        if (bold) ctx.font = "bold " + ctx.font;
+        if (italic) ctx.font = "italic " + ctx.font;
+        ctx.fillStyle = color;
+        drawToken(token.content);
+        ctx.fillStyle = oldFillStyle;
+        ctx.font = oldFont;
+      } else if (typeof token === "string") {
+        ctx.fillText(token, x, y);
+        x += token.length * this.letterWidth;
+      }
+    };
+    tokens.forEach(drawToken);
+  }
+
+  drawLayer(layer, offsetX = 0, offsetY = 0) {
+    this.ctx.drawImage(layer.canvas, 0, 0, this.width*pixelRatio, this.height*pixelRatio,
+      offsetX, offsetY, this.width, this.height);
   }
 
   drawQuick = () => {
@@ -203,7 +221,7 @@ export default class EditorRenderer {
     this.drawBackground();
     this.drawSelection();
     this.drawLayer(this.bgLayer);
-    this.drawLayer(this.textLayer);
+    this.drawTextLayer();
     this.drawCursor();
     this.drawTime = new Date().getTime() - start;
   };
@@ -219,7 +237,7 @@ export default class EditorRenderer {
     this.drawSelection();
     this.drawText();
     this.drawLayer(this.bgLayer);
-    this.drawLayer(this.textLayer);
+    this.drawTextLayer();
     this.drawCursor();
     this.drawTime = new Date().getTime() - start;
   };
@@ -270,20 +288,10 @@ export default class EditorRenderer {
         this.scrollY = 0;
       }
     }
-    this.draw();
-  }
-
-  resize() {
-    const { width, height } = this.canvas.getBoundingClientRect();
-    [this.width, this.height] = [width, height];
-    this.canvas.width = this.textLayer.canvas.width = this.bgLayer.canvas.width =
-      width * pixelRatio;
-    this.canvas.height = this.textLayer.canvas.height = this.bgLayer.canvas.height =
-      height * pixelRatio;
-    this.ctx.scale(pixelRatio, pixelRatio);
-    this.textLayer.ctx.scale(pixelRatio, pixelRatio);
-    this.bgLayer.ctx.scale(pixelRatio, pixelRatio);
-    this.visibleLines = this.fromY(height - PADDING) - this.firstRow;
+    if (scrolled)
+      this.draw();
+    else
+      this.drawQuick();
   }
 
   get showCursor() {
@@ -298,5 +306,87 @@ export default class EditorRenderer {
     if (this.showCursor !== showCursorWas) this.drawQuick();
 
     window.requestAnimationFrame(this.blinkCursor);
+  };
+
+  // Layer logic
+
+  createLayer(extraWidth = 0, extraHeight = 0) {
+    const canvas = document.createElement("canvas");
+    canvas.width = this.canvas.width + extraWidth * pixelRatio;
+    canvas.height = this.canvas.height + extraHeight * pixelRatio;
+    const ctx = canvas.getContext("2d");
+    const layer = { canvas, ctx, extraWidth, extraHeight };
+    this.layers.push(layer);
+    return layer;
+  }
+
+  resize() {
+    const { width, height } = this.canvas.getBoundingClientRect();
+    [this.width, this.height] = [width, height];
+    this.canvas.width = width * pixelRatio;
+    this.canvas.height = height * pixelRatio;
+    // Fix aspect ratios
+    this.ctx.scale(pixelRatio, pixelRatio);
+    this.layers.forEach(layer => {
+      layer.canvas.width = this.canvas.width + layer.extraWidth * pixelRatio;
+      layer.canvas.height = this.canvas.height + layer.extraHeight * pixelRatio;
+      layer.ctx.scale(pixelRatio, pixelRatio);
+    });
+    this.visibleLines = this.fromY(height - PADDING) - this.firstRow;
+  }
+
+  // Lines cache to improve rendering speed (especially while scrolling)
+
+  lineCache = new Map();
+  // FIFO
+  lineCachePosition = 0;
+  lineCacheSize = 50;
+  lineCacheKeys = new Array(this.lineCacheSize);
+
+  initCache() {
+    this.lineCacheLayer = {
+      canvas: document.createElement("canvas"),
+    };
+    this.lineCacheLayer.ctx = this.lineCacheLayer.canvas.getContext("2d");
+    this.lineCacheLayer.canvas.width = window.innerWidth * pixelRatio;
+    this.lineCacheLayer.canvas.height = this.lineCacheSize * this.cacheLineHeight * pixelRatio;
+    this.lineCacheLayer.ctx.scale(pixelRatio, pixelRatio);
+  }
+
+  get cacheLineHeight() {
+    return this.letterHeight * 1.2;
+  }
+
+  cacheLine(line) {
+    this.lineCachePosition++;
+    if (this.lineCachePosition > this.lineCacheSize) {
+      this.lineCachePosition = 0;
+    }
+    if (this.lineCacheKeys[this.lineCachePosition]) {
+      console.log("Overwriting cache for ", line);
+      this.lineCache.clear(this.lineCacheKeys[this.lineCachePosition]);
+    }
+    const cacheY = this.lineCachePosition * this.cacheLineHeight;
+    this.lineCacheLayer.ctx.clearRect(0, cacheY, this.width, this.cacheLineHeight);
+    this.drawLine(this.lineCacheLayer.ctx, line, 0, cacheY + this.letterHeight);
+    this.lineCacheKeys[this.lineCachePosition] = line;
+    this.lineCache.set(line, { cacheY });
+  }
+
+  drawLineFromCache(line, x, y) {
+    const cached = this.lineCache.get(line);
+    if (!cached) throw new Error("Line not found in cache");
+    this.textLayer.ctx.clearRect(x, y + 3, this.width, this.cacheLineHeight - 3);
+    this.textLayer.ctx.drawImage(
+      this.lineCacheLayer.canvas,
+      0,
+      cached.cacheY*pixelRatio,
+      this.width*pixelRatio,
+      this.cacheLineHeight*pixelRatio,
+      x,
+      y,
+      this.width,
+      this.cacheLineHeight
+    );
   }
 }

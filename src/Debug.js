@@ -17,8 +17,9 @@ export default class Debug extends React.Component {
 
   render() {
     if (!this.props.editor.isSetup) return null;
-    const { selection } = this.props.editor.store;
-    const { drawTime, firstRow, scrollY, visibleLines } = this.props.editor.renderer;
+    const { store, renderer } = this.props.editor;
+    const { selection } = store;
+    const { drawTime, firstRow, scrollY, visibleLines } = renderer;
     return (
       <div
         style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 200 }}
