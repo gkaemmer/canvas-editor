@@ -26,14 +26,70 @@ function nextWordEnd(line, index) {
   return x;
 }
 
+export function normalizeSelection(cursor) {
+  let { x, y, sx, sy } = cursor;
+  if (sy > y || (sy === y && sx > x)) {
+    // Swap start and end
+    return { startX: x, startY: y, endX: sx, endY: sy };
+  }
+  return { startX: sx, startY: sy, endX: x, endY: y };
+}
+
 export default class EditorStore {
   rows = [""];
-  cx = 0;
-  cy = 0;
-  prevcx = 0;
-  selection = null;
   focused = true;
   firstRow = 0;
+
+  cursors = [{ x: 0, y: 0, prevx: 0, sx: 0, sy: 0 }];
+
+  get cx() {
+    return this.cursors[0].x;
+  }
+
+  set cx(val) {
+    this.cursors[0].x = val;
+  }
+
+  get prevcx() {
+    return this.cursors[0].prevx;
+  }
+
+  set prevcx(val) {
+    this.cursors[0].prevx = val;
+  }
+
+  get cy() {
+    return this.cursors[0].y;
+  }
+
+  set cy(val) {
+    this.cursors[0].y = val;
+  }
+
+  get selection() {
+    const c = this.cursors[0];
+    if (c.x === c.sx && c.y === c.sy)
+      return null;
+    return {
+      startX: c.sx,
+      startY: c.sy,
+      endX: c.x,
+      endY: c.y
+    };
+  }
+
+  set selection(val) {
+    if (!val) {
+      this.cursors[0].sx = this.cursors[0].x;
+      this.cursors[0].sy = this.cursors[0].y;
+    }
+    Object.assign(this.cursors[0], {
+      x: val.endX,
+      y: val.endY,
+      sx: val.startX,
+      sy: val.startY
+    });
+  }
 
   setup({ renderer }) {
     this.renderer = renderer;
@@ -71,13 +127,16 @@ export default class EditorStore {
   }
 
   deleteSelection() {
-    let { startX, startY, endX, endY } = this.normalizedSelection;
-    const before = this.rows[startY].slice(0, startX);
-    const after = this.rows[endY].slice(endX, this.rows[endY].length);
-    this.rows.splice(startY, endY - startY + 1, before + after);
-    this.cx = startX;
-    this.cy = startY;
-    this.selection = null;
+    this.cursors.forEach(cursor => {
+      let { startX, startY, endX, endY } = normalizeSelection(cursor);
+      const before = this.rows[startY].slice(0, startX);
+      const after = this.rows[endY].slice(endX, this.rows[endY].length);
+      this.rows.splice(startY, endY - startY + 1, before + after);
+      cursor.x = startX;
+      cursor.y = startY;
+
+      this.selection = null;
+    })
   }
 
   backspace() {
@@ -107,195 +166,180 @@ export default class EditorStore {
     this.renderer.draw();
   }
 
-  moveCursor(direction, { select, byWord, toEnd, x, y }) {
+  moveCursor(direction, { select, byWord, toEnd, addCursor, x, y }) {
     // Move the cursor, and optionally start/edit a selection
-    let newSelection;
-    if (select && !this.selection) {
-      newSelection = { startX: this.cx, startY: this.cy };
-    }
 
-    switch (direction) {
-      case directions.LEFT:
-        if (toEnd) {
-          this.cx = 0;
-        } else if (byWord) {
-          // Move by word, unless at the beginning of a line
-          if (this.cx <= 0) {
-            if (this.cy > 0) {
-              this.cy--;
-              this.cx = this.rows[this.cy].length;
-              this.prevcx = this.cx;
-            }
-          } else {
-            this.cx = prevWordStart(this.rows[this.cy], this.cx - 1);
-          }
-        } else {
-          if (!select && this.selection) {
-            // Move cursor to the start of selection
-            this.cx = this.normalizedSelection.startX;
-            this.cy = this.normalizedSelection.startY;
-          } else {
-            if (this.cx === 0) {
-              if (this.cy > 0) {
-                this.cy--;
-                this.cx = this.rows[this.cy].length;
-              }
-            } else {
-              this.cx--;
-            }
-          }
-        }
-        this.prevcx = this.cx;
-        break;
-      case directions.RIGHT:
-        if (toEnd) {
-          this.cx = this.rows[this.cy].length;
-        } else if (byWord) {
-          // Move by word, unless at the end of a line
-          if (this.cx >= this.rows[this.cy].length) {
-            if (this.cy < this.rows.length - 1) {
-              this.cy++;
-              this.cx = 0;
-              this.prevcx = this.cx;
-            }
-          } else {
-            this.cx = nextWordEnd(this.rows[this.cy], this.cx + 1);
-          }
-        } else {
-          if (!select && this.selection) {
-            // Move cursor to the end of selection
-            this.cx = this.normalizedSelection.endX;
-            this.cy = this.normalizedSelection.endY;
-          } else {
-            if (this.cx >= this.rows[this.cy].length) {
-              if (this.cy < this.rows.length - 1) {
-                this.cy++;
-                this.cx = 0;
-              }
-            } else {
-              this.cx++;
-            }
-          }
-        }
-        this.prevcx = this.cx;
-        break;
-      case directions.UP:
-        if (toEnd) {
-          this.cy = 0;
-          this.cx = 0;
-        } else {
-          if (this.cy <= 0) this.cx = this.prevcx = 0;
-          else {
-            this.cy--;
-            this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
-          }
-        }
-        this.prevcx = this.cx;
-        break;
-      case directions.DOWN:
-        if (toEnd) {
-          this.cy = this.rows.length - 1;
-          this.cx = this.rows[this.cy].length;
-        } else {
-          if (this.cy >= this.rows.length - 1)
-            this.cx = this.prevcx = this.rows[this.cy].length;
-          else {
-            this.cy++;
-            this.cx = Math.min(this.prevcx, this.rows[this.cy].length);
-          }
-        }
-        this.prevcx = this.cx;
-        break;
-      case directions.ABSOLUTE:
-        // Bound x, y to possible values
-        y = Math.min(this.rows.length - 1, Math.max(0, y));
-        x = Math.min(this.rows[y].length, Math.max(0, x));
-        this.cx = x;
-        this.prevcx = x;
-        this.cy = y;
-        break;
-    }
-
-    if (select) {
-      this.setSelectionIfNeeded({
-        ...(newSelection || this.selection),
-        endX: this.cx,
-        endY: this.cy
-      });
+    if (direction === directions.ABSOLUTE) {
+      // Bound x, y to possible values
+      y = Math.min(this.rows.length - 1, Math.max(0, y));
+      x = Math.min(this.rows[y].length, Math.max(0, x));
+      if (addCursor)
+        this.cursors.push({ x: x, y: y, prevx: x, sx: x, sy: y })
+      const cursor = this.cursors[this.cursors.length - 1];
+      cursor.x = x;
+      cursor.y = y;
+      cursor.prevx = x;
+      if (!select) {
+        cursor.sx = cursor.x;
+        cursor.sy = cursor.y;
+      }
     } else {
-      this.selection = null;
+      this.cursors.forEach(cursor => {
+        switch (direction) {
+          case directions.LEFT:
+            if (toEnd) {
+              cursor.x = 0;
+            } else if (byWord) {
+              // Move by word, unless at the beginning of a line
+              if (cursor.x <= 0) {
+                if (cursor.y > 0) {
+                  cursor.y--;
+                  cursor.x = this.rows[cursor.y].length;
+                  cursor.prevx = cursor.x;
+                }
+              } else {
+                cursor.x = prevWordStart(this.rows[cursor.y], cursor.x - 1);
+              }
+            } else {
+              if (!select && cursor.selection) {
+                // Move cursor to the start of selection
+                cursor.x = normalizeSelection(cursor.selection).startX;
+                cursor.y = normalizeSelection(cursor.selection).startY;
+              } else {
+                if (cursor.x === 0) {
+                  if (cursor.y > 0) {
+                    cursor.y--;
+                    cursor.x = this.rows[cursor.y].length;
+                  }
+                } else {
+                  cursor.x--;
+                }
+              }
+            }
+            cursor.prevx = cursor.x;
+            break;
+          case directions.RIGHT:
+            if (toEnd) {
+              cursor.x = this.rows[cursor.y].length;
+            } else if (byWord) {
+              // Move by word, unless at the end of a line
+              if (cursor.x >= this.rows[cursor.y].length) {
+                if (cursor.y < this.rows.length - 1) {
+                  cursor.y++;
+                  cursor.x = 0;
+                  cursor.prevx = cursor.x;
+                }
+              } else {
+                cursor.x = nextWordEnd(this.rows[cursor.y], cursor.x + 1);
+              }
+            } else {
+              if (!select && cursor.selection) {
+                // Move cursor to the end of selection
+                cursor.x = normalizeSelection(cursor.selection).endX;
+                cursor.y = normalizeSelection(cursor.selection).endY;
+              } else {
+                if (cursor.x >= this.rows[cursor.y].length) {
+                  if (cursor.y < this.rows.length - 1) {
+                    cursor.y++;
+                    cursor.x = 0;
+                  }
+                } else {
+                  cursor.x++;
+                }
+              }
+            }
+            cursor.prevx = cursor.x;
+            break;
+          case directions.UP:
+            if (toEnd) {
+              cursor.y = 0;
+              cursor.x = 0;
+              cursor.prevx = cursor.x;
+            } else {
+              if (cursor.y <= 0) cursor.x = cursor.prevx = 0;
+              else {
+                cursor.y--;
+                cursor.x = Math.min(cursor.prevx, this.rows[cursor.y].length);
+              }
+            }
+            break;
+          case directions.DOWN:
+            if (toEnd) {
+              cursor.y = this.rows.length - 1;
+              cursor.x = this.rows[cursor.y].length;
+              cursor.prevx = cursor.x;
+            } else {
+              if (cursor.y >= this.rows.length - 1)
+                cursor.x = cursor.prevx = this.rows[cursor.y].length;
+              else {
+                cursor.y++;
+                cursor.x = Math.min(cursor.prevx, this.rows[cursor.y].length);
+              }
+            }
+            break;
+        }
+
+        if (!select) {
+          cursor.sx = cursor.x;
+          cursor.sy = cursor.y;
+        }
+      })
     }
+
     this.renderer.scrollCursorIntoView();
     this.renderer.drawQuick();
   };
 
   selectWord() {
     const endX = nextWordEnd(this.rows[this.cy], this.cx);
-    this.setSelectionIfNeeded({
-      startX: prevWordStart(this.rows[this.cy], this.cx),
-      startY: this.cy,
-      endX,
-      endY: this.cy
-    });
-    this.cx = endX;
+    const startX = prevWordStart(this.rows[this.cy], this.cx);
+    this.cursors = [{
+      x: endX,
+      y: this.cy,
+      sx: startX,
+      sy: this.cy,
+      prevx: endX
+    }];
     this.renderer.drawQuick();
   }
 
   selectLine() {
-    this.cx = 0;
-    this.setSelectionIfNeeded({
-      startX: 0,
-      startY: this.cy,
-      endX: 0,
-      endY: this.cy + 1
-    });
-    this.cy++;
+    this.cursors = [{
+      x: 0,
+      y: this.cy + 1,
+      sx: 0,
+      sy: this.cy,
+      prevx: 0
+    }];
     this.renderer.drawQuick();
   }
 
   selectAll() {
-    this.cx = this.rows[this.rows.length - 1].length;
-    this.cy = this.rows.length - 1;
-    this.setSelectionIfNeeded({
-      startX: 0,
-      startY: 0,
-      endX: this.cx,
-      endY: this.cy
-    });
+    const cursor = {
+      x: this.rows[this.rows.length - 1].length,
+      y: this.rows.length - 1,
+      sx: 0,
+      sy: 0,
+      prevx: this.rows[this.rows.length - 1].length
+    };
+    this.cursors = [{
+      cursor
+    }];
     this.renderer.drawQuick();
-  }
-
-  setSelectionIfNeeded(newSelection) {
-    if (!newSelection) this.selection = null;
-    if (newSelection.endX !== newSelection.startX || newSelection.endY !== newSelection.startY) {
-      this.selection = newSelection;
-    } else {
-      this.selection = null;
-    }
   }
 
   getSelectedText() {
     if (!this.selection) return "";
     if (this.selection.startY === this.selection.endY) {
-      const { startX, endX } = this.normalizedSelection;
+      const { startX, endX } = normalizeSelection(this.selection);
       return this.rows[this.selection.endY].substring(startX, endX);
     } else {
-      const { startX, startY, endX, endY } = this.normalizedSelection;
+      const { startX, startY, endX, endY } = normalizeSelection(this.selection);
       let result = this.rows[startY].substring(startX) + "\n";
       for (let i = startY + 1; i < endY; i++) {
         result += this.rows[i] + "\n";
       }
       return result + this.rows[endY].substring(0, endX);
     }
-  }
-
-  // Normalized selection is guaranteed to have start before/above end
-  get normalizedSelection() {
-    let { startX, startY, endX, endY } = this.selection;
-    if (startY > endY || (startY === endY && startX > endX)) {
-      // Swap start and end
-      [startX, startY, endX, endY] = [endX, endY, startX, startY];
-    }
-    return { startX, startY, endX, endY };
   }
 }

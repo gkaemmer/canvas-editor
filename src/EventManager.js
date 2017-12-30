@@ -82,7 +82,8 @@ export default class EventManager {
     let x = this.renderer.fromX(rawX);
     let y = this.renderer.fromY(rawY);
     let select = e.shiftKey;
-    this.store.moveCursor(directions.ABSOLUTE, { select, x, y });
+    let addCursor = hasSuperKey(e);
+    this.store.moveCursor(directions.ABSOLUTE, { select, addCursor, x, y });
 
     // Handle double/triple click
     if (this.canTripleClick) {

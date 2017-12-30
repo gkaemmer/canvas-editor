@@ -1,6 +1,7 @@
-import EditorStore from "./EditorStore";
+import EditorStore, { normalizeSelection } from "./EditorStore";
 import theme from "./theme";
 import Prism from "prismjs";
+import throttle from "lodash/throttle";
 
 const PADDING = 5;
 const font = "13px Menlo, monospace";
@@ -86,7 +87,7 @@ export default class EditorRenderer {
     this.bgLayer.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
-  drawSelection() {
+  drawSelection(cursor) {
     const ctx = this.bgLayer.ctx;
     if (this.store.selection) {
       const drawSelection = (line, start, end) => {
@@ -100,7 +101,7 @@ export default class EditorRenderer {
       };
 
       ctx.fillStyle = "#555";
-      let { startX, startY, endX, endY } = this.store.normalizedSelection;
+      let { startX, startY, endX, endY } = normalizeSelection(cursor);
       if (startY === endY) {
         // Only highlight one line
         drawSelection(startY, startX, endX);
@@ -117,20 +118,20 @@ export default class EditorRenderer {
     }
   }
 
-  drawCursor() {
+  drawCursor(cursor) {
     const ctx = this.ctx;
     if (this.store.focused) {
       // Draw cursor
       const cursorOpacity = this.showCursor ? 1 : 0;
       ctx.fillStyle = "rgba(221, 221, 221, " + cursorOpacity + ")";
       ctx.fillRect(
-        this.toX(this.store.cx) - 1,
-        this.toY(this.store.cy) + 0.1 * this.letterHeight,
+        this.toX(cursor.x) - 1,
+        this.toY(cursor.y) + 0.1 * this.letterHeight,
         2,
         this.letterHeight * 1.2
       );
-      this.input.style.left = this.toX(this.store.cx) + "px";
-      this.input.style.top = this.toY(0.2 + this.store.cy) + "px";
+      this.input.style.left = this.toX(cursor.x) + "px";
+      this.input.style.top = this.toY(0.2 + cursor.y) + "px";
     }
   }
 
@@ -143,15 +144,19 @@ export default class EditorRenderer {
     const tokens = Prism.tokenize(line, Prism.languages.js);
     if (!tokens) return;
 
+    const drawTokenString = str => {
+      ctx.fillText(str, x, y);
+    }
+
     const drawToken = token => {
       if (Array.isArray(token)) {
         token.forEach(inner => drawToken(inner));
       } else if (typeof token === "object") {
         let oldFillStyle = ctx.fillStyle;
         let oldFont = ctx.font;
-        const elementTypes = [token.type];
-        if (token.alias) elementTypes.push(token.alias);
-        const [color, bold, italic] = theme.text(elementTypes);
+        let elementType = token.type;
+        if (token.alias) elementType = elementType + " " + token.alias;
+        const [color, bold, italic] = theme.text(elementType);
         if (bold) ctx.font = "bold " + ctx.font;
         if (italic) ctx.font = "italic " + ctx.font;
         ctx.fillStyle = color;
@@ -159,7 +164,7 @@ export default class EditorRenderer {
         ctx.fillStyle = oldFillStyle;
         ctx.font = oldFont;
       } else if (typeof token === "string") {
-        ctx.fillText(token, x, y);
+        drawTokenString(token);
         x += token.length * this.letterWidth;
       }
     };
@@ -206,10 +211,10 @@ export default class EditorRenderer {
   drawQuick = () => {
     const start = new Date().getTime();
     this.drawBackground();
-    this.drawSelection();
+    this.store.cursors.forEach(cursor => this.drawSelection(cursor));
     this.ctx.drawImage(this.bgLayer.canvas, 0, 0, this.width, this.height);
     this.drawTextLayer();
-    this.drawCursor();
+    this.store.cursors.forEach(cursor => this.drawCursor(cursor));
     this.drawTime = new Date().getTime() - start;
   };
 
@@ -221,11 +226,11 @@ export default class EditorRenderer {
 
     const start = new Date().getTime();
     this.drawBackground();
-    this.drawSelection();
+    this.store.cursors.forEach(cursor => this.drawSelection(cursor));
     this.drawText();
     this.ctx.drawImage(this.bgLayer.canvas, 0, 0, this.width, this.height);
     this.drawTextLayer();
-    this.drawCursor();
+    this.store.cursors.forEach(cursor => this.drawCursor(cursor));
     this.drawTime = new Date().getTime() - start;
   };
 
@@ -247,8 +252,7 @@ export default class EditorRenderer {
     }
   }
 
-  scroll(amount) {
-    this.scrollY += amount;
+  doScroll = () => {
     if (
       (this.firstRow <= 0 && this.scrollY < 0) ||
       (this.firstRow >= this.store.rows.length - this.visibleLines &&
@@ -279,6 +283,11 @@ export default class EditorRenderer {
       this.draw();
     else
       this.drawQuick();
+  };
+
+  scroll(amount) {
+    this.scrollY += amount;
+    setTimeout(this.doScroll);
   }
 
   get showCursor() {

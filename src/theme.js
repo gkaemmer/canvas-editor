@@ -1,4 +1,5 @@
 // https://github.com/Ahrengot/Monokai-theme-for-Prism.js
+import memoize from "lodash/memoize";
 
 const defaultText = "#76d9e6";
 const background = "#2a2a2a";
@@ -34,9 +35,14 @@ for (let element in styles) {
   styles[element].push(italics.includes(element));
 }
 
+let cache = {};
+
 export default {
   background,
-  text: elementTypes => {
+  text: elementType => {
+    if (cache[elementType]) return cache[elementType];
+
+    const elementTypes = elementType.split();
     let finalColor = defaultText;
     let finalBold = false;
     let finalItalic = false;
@@ -49,6 +55,8 @@ export default {
         finalColor = color;
       }
     }
-    return [finalColor, finalBold, finalItalic];
+    const result = [finalColor, finalBold, finalItalic];
+    cache[elementType] = result;
+    return result;
   }
 };
