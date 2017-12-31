@@ -68,8 +68,7 @@ export default class EditorStore {
 
   get selection() {
     const c = this.cursors[0];
-    if (c.x === c.sx && c.y === c.sy)
-      return null;
+    if (c.x === c.sx && c.y === c.sy) return null;
     return {
       startX: c.sx,
       startY: c.sy,
@@ -136,7 +135,7 @@ export default class EditorStore {
       cursor.y = startY;
 
       this.selection = null;
-    })
+    });
   }
 
   backspace() {
@@ -173,8 +172,9 @@ export default class EditorStore {
       // Bound x, y to possible values
       y = Math.min(this.rows.length - 1, Math.max(0, y));
       x = Math.min(this.rows[y].length, Math.max(0, x));
-      if (addCursor)
-        this.cursors.push({ x: x, y: y, prevx: x, sx: x, sy: y })
+      if (!addCursor) this.cursors = [];
+
+      this.cursors.push({ x: x, y: y, prevx: x, sx: x, sy: y });
       const cursor = this.cursors[this.cursors.length - 1];
       cursor.x = x;
       cursor.y = y;
@@ -283,34 +283,35 @@ export default class EditorStore {
           cursor.sx = cursor.x;
           cursor.sy = cursor.y;
         }
-      })
+      });
     }
 
     this.renderer.scrollCursorIntoView();
     this.renderer.drawQuick();
-  };
+  }
 
   selectWord() {
-    const endX = nextWordEnd(this.rows[this.cy], this.cx);
-    const startX = prevWordStart(this.rows[this.cy], this.cx);
-    this.cursors = [{
-      x: endX,
-      y: this.cy,
-      sx: startX,
-      sy: this.cy,
-      prevx: endX
-    }];
+    const cursor = this.cursors[this.cursors.length - 1];
+    const endX = nextWordEnd(this.rows[cursor.y], cursor.x);
+    const startX = prevWordStart(this.rows[cursor.y], cursor.x);
+    cursor.x = endX;
+    cursor.y = cursor.y;
+    cursor.sx = startX;
+    cursor.sy = cursor.y;
+    cursor.prevx = endX;
     this.renderer.drawQuick();
   }
 
   selectLine() {
-    this.cursors = [{
-      x: 0,
-      y: this.cy + 1,
-      sx: 0,
-      sy: this.cy,
-      prevx: 0
-    }];
+    this.cursors = [
+      {
+        x: 0,
+        y: this.cy + 1,
+        sx: 0,
+        sy: this.cy,
+        prevx: 0
+      }
+    ];
     this.renderer.drawQuick();
   }
 
@@ -322,9 +323,11 @@ export default class EditorStore {
       sy: 0,
       prevx: this.rows[this.rows.length - 1].length
     };
-    this.cursors = [{
-      cursor
-    }];
+    this.cursors = [
+      {
+        cursor
+      }
+    ];
     this.renderer.drawQuick();
   }
 

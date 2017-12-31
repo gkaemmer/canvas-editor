@@ -87,51 +87,54 @@ export default class EditorRenderer {
     this.bgLayer.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
-  drawSelection(cursor) {
+  drawSelections(cursor) {
     const ctx = this.bgLayer.ctx;
-    if (this.store.selection) {
-      const drawSelection = (line, start, end) => {
-        const width = (end - start) * this.letterWidth;
-        ctx.fillRect(
-          this.toX(start) - 1,
-          this.toY(line) + 0.2 * this.letterHeight,
-          width + 2,
-          this.letterHeight
-        );
-      };
-
-      ctx.fillStyle = "#555";
-      let { startX, startY, endX, endY } = normalizeSelection(cursor);
-      if (startY === endY) {
-        // Only highlight one line
-        drawSelection(startY, startX, endX);
-      } else {
-        // First line
-        drawSelection(startY, startX, this.store.rows[startY].length + 1);
-        // All in between
-        for (let y = startY + 1; y < endY; y++) {
-          drawSelection(y, 0, this.store.rows[y].length + 1);
+    const drawSelection = (line, start, end) => {
+      const width = (end - start) * this.letterWidth;
+      ctx.fillRect(
+        this.toX(start) - 1,
+        this.toY(line) + 0.2 * this.letterHeight,
+        width + 2,
+        this.letterHeight
+      );
+    };
+    this.store.cursors.forEach(cursor => {
+      if (cursor.x !== cursor.sx || cursor.y !== cursor.sy) {
+        ctx.fillStyle = "#555";
+        let { startX, startY, endX, endY } = normalizeSelection(cursor);
+        if (startY === endY) {
+          // Only highlight one line
+          drawSelection(startY, startX, endX);
+        } else {
+          // First line
+          drawSelection(startY, startX, this.store.rows[startY].length + 1);
+          // All in between
+          for (let y = startY + 1; y < endY; y++) {
+            drawSelection(y, 0, this.store.rows[y].length + 1);
+          }
+          // Last line
+          drawSelection(endY, 0, endX);
         }
-        // Last line
-        drawSelection(endY, 0, endX);
       }
-    }
+    });
   }
 
-  drawCursor(cursor) {
+  drawCursors() {
     const ctx = this.ctx;
     if (this.store.focused) {
-      // Draw cursor
-      const cursorOpacity = this.showCursor ? 1 : 0;
-      ctx.fillStyle = "rgba(221, 221, 221, " + cursorOpacity + ")";
-      ctx.fillRect(
-        this.toX(cursor.x) - 1,
-        this.toY(cursor.y) + 0.1 * this.letterHeight,
-        2,
-        this.letterHeight * 1.2
-      );
-      this.input.style.left = this.toX(cursor.x) + "px";
-      this.input.style.top = this.toY(0.2 + cursor.y) + "px";
+      this.store.cursors.forEach(cursor => {
+        // Draw cursor
+        const cursorOpacity = this.showCursor ? 1 : 0;
+        ctx.fillStyle = "rgba(221, 221, 221, " + cursorOpacity + ")";
+        ctx.fillRect(
+          this.toX(cursor.x) - 1,
+          this.toY(cursor.y) + 0.1 * this.letterHeight,
+          2,
+          this.letterHeight * 1.2
+        );
+        this.input.style.left = this.toX(cursor.x) + "px";
+        this.input.style.top = this.toY(0.2 + cursor.y) + "px";
+      });
     }
   }
 
@@ -146,7 +149,7 @@ export default class EditorRenderer {
 
     const drawTokenString = str => {
       ctx.fillText(str, x, y);
-    }
+    };
 
     const drawToken = token => {
       if (Array.isArray(token)) {
@@ -204,17 +207,26 @@ export default class EditorRenderer {
 
   drawTextLayer() {
     const { width, height } = this.textLayer.canvas;
-    this.ctx.drawImage(this.textLayer.canvas, 0, 0, width, height,
-      0, -this.letterHeight - this.scrollY, width / pixelRatio, height / pixelRatio);
+    this.ctx.drawImage(
+      this.textLayer.canvas,
+      0,
+      0,
+      width,
+      height,
+      0,
+      -this.letterHeight - this.scrollY,
+      width / pixelRatio,
+      height / pixelRatio
+    );
   }
 
   drawQuick = () => {
     const start = new Date().getTime();
     this.drawBackground();
-    this.store.cursors.forEach(cursor => this.drawSelection(cursor));
+    this.drawSelections();
     this.ctx.drawImage(this.bgLayer.canvas, 0, 0, this.width, this.height);
     this.drawTextLayer();
-    this.store.cursors.forEach(cursor => this.drawCursor(cursor));
+    this.drawCursors();
     this.drawTime = new Date().getTime() - start;
   };
 
@@ -226,11 +238,11 @@ export default class EditorRenderer {
 
     const start = new Date().getTime();
     this.drawBackground();
-    this.store.cursors.forEach(cursor => this.drawSelection(cursor));
+    this.drawSelections();
     this.drawText();
     this.ctx.drawImage(this.bgLayer.canvas, 0, 0, this.width, this.height);
     this.drawTextLayer();
-    this.store.cursors.forEach(cursor => this.drawCursor(cursor));
+    this.drawCursors();
     this.drawTime = new Date().getTime() - start;
   };
 
@@ -279,10 +291,8 @@ export default class EditorRenderer {
         this.scrollY = 0;
       }
     }
-    if (scrolled)
-      this.draw();
-    else
-      this.drawQuick();
+    if (scrolled) this.draw();
+    else this.drawQuick();
   };
 
   scroll(amount) {
