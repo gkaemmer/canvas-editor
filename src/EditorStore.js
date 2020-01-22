@@ -72,14 +72,7 @@ export default class EditorStore {
   }
 
   get selection() {
-    const c = this.cursors[0];
-    if (c.x === c.sx && c.y === c.sy) return null;
-    return {
-      startX: c.sx,
-      startY: c.sy,
-      endX: c.x,
-      endY: c.y
-    };
+    return normalizeSelection(this.cursors[this.currentCursor || 0]);
   }
 
   set selection(val) {
@@ -479,10 +472,11 @@ export default class EditorStore {
   getSelectedText() {
     if (!this.selection) return "";
     if (this.selection.startY === this.selection.endY) {
-      const { startX, endX } = normalizeSelection(this.selection);
+      const { startX, endX } = this.selection;
+      console.log(startX, endX);
       return this.rows[this.selection.endY].substring(startX, endX);
     } else {
-      const { startX, startY, endX, endY } = normalizeSelection(this.selection);
+      const { startX, startY, endX, endY } = this.selection;
       let result = this.rows[startY].substring(startX) + "\n";
       for (let i = startY + 1; i < endY; i++) {
         result += this.rows[i] + "\n";
