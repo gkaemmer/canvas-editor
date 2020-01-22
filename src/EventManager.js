@@ -4,7 +4,7 @@ const doubleClickSpeed = 350; // ms
 
 // Allow mac users to use command where windows+linux use control
 function hasSuperKey(event) {
-  const isMac = window.navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const isMac = window.navigator.platform.toUpperCase().indexOf("MAC") >= 0;
   const property = isMac ? "metaKey" : "ctrlKey";
   return event[property];
 }
@@ -28,10 +28,10 @@ export default class EventManager {
       e.code === "ArrowDown"
     ) {
       const direction = {
-        "ArrowRight": directions.RIGHT,
-        "ArrowLeft": directions.LEFT,
-        "ArrowUp": directions.UP,
-        "ArrowDown": directions.DOWN
+        ArrowRight: directions.RIGHT,
+        ArrowLeft: directions.LEFT,
+        ArrowUp: directions.UP,
+        ArrowDown: directions.DOWN
       }[e.code];
       const select = e.shiftKey;
       const toEnd = hasSuperKey(e);
@@ -112,13 +112,11 @@ export default class EventManager {
     if (this.isMouseDown) {
       // Dragging
       this.store.moveCursor(directions.ABSOLUTE, { select: true, x, y });
-      this.setCursor("text")
+      this.setCursor("text");
     } else {
       // Manage
-      if (rawX > this.renderer.gutterWidth + 20)
-        this.setCursor("text")
-      else
-        this.setCursor("default");
+      if (rawX > this.renderer.gutterWidth + 20) this.setCursor("text");
+      else this.setCursor("default");
     }
   };
 
@@ -144,7 +142,7 @@ export default class EventManager {
   handleResize = () => {
     this.renderer.resize();
     this.renderer.draw();
-  }
+  };
 
   setup({ store, renderer, input, canvas }) {
     this.store = store;
@@ -184,16 +182,16 @@ export default class EventManager {
     input.value = text;
     document.body.appendChild(input);
     Object.assign(input.style, {
-      position: 'fixed',
+      position: "fixed",
       top: 0,
       left: 0,
-      width: '2em',
-      height: '2em',
+      width: "2em",
+      height: "2em",
       padding: 0,
-      border: 'none',
-      outline: 'none',
-      boxShadow: 'none',
-      background: 'transparent'
+      border: "none",
+      outline: "none",
+      boxShadow: "none",
+      background: "transparent"
     });
     input.select();
     document.execCommand("copy");
