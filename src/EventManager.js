@@ -55,6 +55,12 @@ export default class EventManager {
     }
   };
 
+  handlePaste = e => {
+    e.preventDefault();
+    let text = (e.clipboardData || window.clipboardData).getData("text");
+    this.store.type(text);
+  };
+
   handleInput = e => {
     setTimeout(() => {
       if (e.target.value) {
@@ -159,7 +165,7 @@ export default class EventManager {
 
     // Various input events
     input.addEventListener("keypress", this.handleInput);
-    input.addEventListener("paste", this.handleInput);
+    input.addEventListener("paste", this.handlePaste);
     input.addEventListener("input", this.handleInput);
     input.addEventListener("blur", this.handleBlur);
     input.addEventListener("focus", this.handleFocus);
