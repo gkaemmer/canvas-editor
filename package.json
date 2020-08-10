@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "next": "^4.2.1",
+    "next": "^9.3.2",
     "prismjs": "^1.21.0",
     "react": "^16.2.0",
     "react-dom": "^16.2.0"
