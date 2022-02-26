@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "next": "^9.3.2",
-    "prismjs": "^1.21.0",
+    "prismjs": "^1.27.0",
     "react": "^16.2.0",
     "react-dom": "^16.2.0"
   },
